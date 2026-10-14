@@ -1,0 +1,15 @@
+{
+  "name": "Shop & Go — Operaciones",
+  "short_name": "Shop & Go",
+  "description": "Operaciones de Shop & Go: pedidos, cobranza y banco.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F2F7F5",
+  "theme_color": "#10A37B",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
