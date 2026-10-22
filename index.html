@@ -91,6 +91,24 @@
   .ppage{display:flex;gap:6mm;align-items:flex-start;break-after:page;page-break-after:always}
   .ppage:last-child{break-after:auto;page-break-after:auto}
   .pcol{display:flex;flex-direction:column;gap:4mm;width:94mm}
+
+  /* ===== Bancos ===== */
+  .bk-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-bottom:14px}
+  .bk-read,.bk-k{border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:4px}
+  .bk-read{background:#111;color:#fff}.bk-read .bk-lbl{color:var(--mint)}.bk-read b{font-size:16px}.bk-read .pill{margin-top:8px;height:42px}
+  .bk-k{border:1px solid var(--line)}.bk-k b{font-size:26px;font-weight:800}
+  .bk-pink{background:var(--rosaSoft);color:var(--rosaDark);border-color:transparent}
+  .bk-lbl{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em}.bk-note{font-size:12px;opacity:.8}
+  .bk-sel{width:auto;height:38px;border-radius:999px;padding:0 12px;font-size:13px;font-weight:700}
+  .bk-xl{height:38px;font-size:13px;padding:0 16px}
+  .bk-list{display:flex;flex-direction:column;gap:10px;padding-bottom:20px}
+  .bk-row{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;border:1px solid var(--line);border-radius:16px;padding:12px 16px;background:#fff}
+  .bk-amt{min-width:120px;display:flex;flex-direction:column}.bk-amt b{font-size:18px;font-weight:800}.bk-amt span{font-size:12px;color:var(--inkSoft)}
+  .bk-info{flex:1 1 260px;min-width:0;display:flex;flex-direction:column;gap:2px}.bk-info b{font-size:14px}.bk-info span{font-size:12px;color:var(--inkSoft)}
+  .bk-clave{font-family:ui-monospace,Menlo,monospace;font-size:11px!important}
+  .bk-right{display:flex;flex-direction:column;gap:6px;align-items:flex-end;margin-left:auto}
+  .bk-btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.bk-ped{font-size:12px;color:var(--inkSoft);text-align:right}
+  @media(max-width:860px){.bk-kpis{grid-template-columns:1fr 1fr}.bk-read{grid-column:1/-1}.bk-k b{font-size:20px}.bk-right{align-items:flex-start;margin-left:0;width:100%}.bk-btns{justify-content:flex-start;width:100%}.bk-btns .pill{flex:1;white-space:nowrap}}
   @media print{
     .shell,.wrap,#modal-root,#loading,.login-ov,.tk-toast{display:none!important}
     html,body{margin:0;padding:0;background:#fff}
@@ -1594,32 +1612,63 @@ function revisarTransfers(){
 function cargarUltimaLectura(){
   sb.from('banco_lecturas').select('fecha,origen,ok').order('fecha',{ascending:false}).limit(1).then(function(r){
     var el=document.getElementById('ultLect');if(!el)return;
-    if(r.error||!r.data||!r.data.length){el.textContent='Ultima lectura: sin registro todavia';return;}
+    if(r.error||!r.data||!r.data.length){el.textContent='Sin lecturas todavia';return;}
     var l=r.data[0];
     var f=new Date(l.fecha).toLocaleString('es-MX',{timeZone:'America/Monterrey',day:'2-digit',month:'short',hour:'numeric',minute:'2-digit'});
-    el.textContent='Ultima lectura: '+f+' ('+(l.origen==='manual'?'manual':'automatica')+(l.ok?'':', con error')+')';
+    el.textContent=f+' · '+(l.origen==='manual'?'manual':'automatica')+(l.ok?'':' (con error)');
   });
 }
+var BK_TAB='pend', BK_RANGO='mes', BK_Q='';
+function bkRangoOk(f){if(BK_RANGO==='todo'||!f)return true;var d=new Date(f+'T12:00:00'),now=new Date();
+  if(BK_RANGO==='7')return (now-d)/864e5<=7;if(BK_RANGO==='30')return (now-d)/864e5<=30;
+  if(BK_RANGO==='mes')return d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth();return true;}
+function bkFiltered(){var q=BK_Q.trim().toUpperCase();return (STATE.transferencias||[]).filter(function(t){
+  if(BK_TAB==='pend'&&t.estatus!=='pendiente')return false;if(BK_TAB==='asig'&&t.estatus!=='asignado')return false;if(BK_TAB==='ign'&&t.estatus!=='ignorado')return false;
+  if(BK_TAB!=='pend'&&!bkRangoOk(t.fecha))return false;
+  if(q&&(t.remitente+' '+t.concepto+' '+t.referencia+' '+t.clave+' '+t.institucion).toUpperCase().indexOf(q)<0)return false;return true;
+}).sort(function(a,b){return (b.fecha||'').localeCompare(a.fecha||'')||(b.createdAt||0)-(a.createdAt||0);});}
 function renderTransferencias(){
-  var trs=(STATE.transferencias||[]);
-  var pend=trs.filter(function(t){return t.estatus==='pendiente';}).sort(function(a,b){return (b.createdAt||0)-(a.createdAt||0);});
-  var asig=trs.filter(function(t){return t.estatus==='asignado';}).length;
-  var h='<button class="btn btnR" style="margin-bottom:6px" onclick="revisarTransfers()">&#128229; Consultar banco ahora</button>';
-  h+='<div id="ultLect" style="font-size:12px;font-weight:700;color:var(--inkSoft);margin-bottom:4px">Ultima lectura: ...</div>';
-  h+='<div style="font-size:12px;color:var(--inkSoft);margin-bottom:14px">El banco se lee solo todos los dias a las 7:00 a.m. Con el boton lo lees en este momento. Luego asigna cada transferencia a su pedido.</div>';
+  var trs=STATE.transferencias||[];
+  var pend=trs.filter(function(t){return t.estatus==='pendiente';});
+  var enRango=trs.filter(function(t){return t.estatus!=='ignorado'&&bkRangoOk(t.fecha);});
+  var sum=function(a){return a.reduce(function(x,t){return x+(Number(t.monto)||0);},0);};
+  var rangoTxt={'7':'ultimos 7 dias','30':'ultimos 30 dias',mes:'este mes',todo:'todo'}[BK_RANGO];
+  var h='<div class="bk-kpis">';
+  h+='<div class="bk-read"><span class="bk-lbl">Lectura del banco</span><b id="ultLect">Ultima lectura: ...</b><span class="bk-note">Automatica todos los dias a las 7:00 a.m.</span><button class="pill pillR" onclick="revisarTransfers()">&#8635; Consultar banco ahora</button></div>';
+  h+='<div class="bk-k"><span class="bk-lbl">Recibido &middot; '+rangoTxt+'</span><b>'+mxn(sum(enRango))+'</b><span class="bk-note">'+enRango.length+' movimiento'+(enRango.length!==1?'s':'')+'</span></div>';
+  h+='<div class="bk-k bk-pink"><span class="bk-lbl">Por asignar</span><b>'+pend.length+'</b><span class="bk-note">'+mxn(sum(pend))+' sin ligar a un pedido</span></div></div>';
   setTimeout(cargarUltimaLectura,0);
-  h+='<div style="font-size:13px;font-weight:700;color:var(--inkSoft);margin-bottom:8px">Por asignar ('+pend.length+')</div>';
-  if(!pend.length)h+=emptyBox('Nada por asignar','Dale "Consultar banco ahora" para traer las nuevas.');
-  else pend.forEach(function(t){
-    h+='<div class="card" style="padding:12px 14px">';
-    h+='<div style="display:flex;justify-content:space-between;align-items:baseline"><span class="tnum" style="font-weight:800;font-size:16px">'+mxn(t.monto)+'</span><span style="font-size:12px;color:var(--inkSoft)">'+fmtDate(t.fecha)+'</span></div>';
-    h+='<div style="font-size:13px;color:var(--ink);margin-top:2px;font-weight:600">'+esc(t.remitente||'(sin nombre)')+'</div>';
-    h+='<div style="font-size:12px;color:var(--inkSoft)">'+(t.institucion?esc(t.institucion):'')+(t.concepto?(' &middot; concepto: '+esc(t.concepto)):'')+(t.referencia?(' &middot; ref: '+esc(t.referencia)):'')+'</div>';
-    h+='<div style="display:flex;gap:8px;margin-top:10px;align-items:center"><button class="btn btnG" style="flex:1;padding:8px" onclick="openAsignar(\''+t.id+'\')">Asignar a pedido</button><button class="mini" style="color:var(--amber)" onclick="doIgnorar(\''+t.id+'\')">Ignorar</button></div>';
-    h+='</div>';
-  });
-  h+='<div style="font-size:12px;color:var(--inkSoft);margin-top:14px">'+asig+' transferencia(s) ya asignada(s).</div>';
+  var nA=trs.filter(function(t){return t.estatus==='asignado'&&bkRangoOk(t.fecha);}).length,nI=trs.filter(function(t){return t.estatus==='ignorado'&&bkRangoOk(t.fecha);}).length;
+  var tabs=[['pend','Por asignar',pend.length],['asig','Asignadas',nA],['ign','Ignoradas',nI],['todas','Todas',enRango.length+nI]];
+  h+='<div class="tk-tabs">'+tabs.map(function(t){return '<button class="tk-tab'+(BK_TAB===t[0]?' on':'')+'" onclick="bkTab(\''+t[0]+'\')">'+t[1]+' ('+t[2]+')</button>';}).join('');
+  h+='<select class="bk-sel" onchange="bkRango(this.value)">'+[['mes','Este mes'],['7','Ultimos 7 dias'],['30','Ultimos 30 dias'],['todo','Todo']].map(function(o){return '<option value="'+o[0]+'"'+(BK_RANGO===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>';
+  h+='<input id="bk-q" class="tk-q" placeholder="Buscar ordenante, concepto o clave..." value="'+esc(BK_Q)+'" oninput="bkSearch()"><button class="pill pillR bk-xl" onclick="bkExcel()">Exportar Excel</button></div>';
+  h+='<div id="bk-list">'+bkListHTML()+'</div>';
   return h;
+}
+function bkListHTML(){
+  var list=bkFiltered();
+  if(!list.length)return BK_TAB==='pend'?emptyBox('Nada por asignar','Todas las transferencias ya estan ligadas a un pedido.'):'<div style="color:var(--inkSoft);padding:20px 4px">Sin movimientos en este filtro.</div>';
+  var cl=asgClientes();
+  return '<div class="bk-list">'+list.map(function(t){
+    var right='';
+    if(t.estatus==='pendiente'){var sg=suggestClient(t.remitente,cl);
+      right='<div class="bk-st">'+(sg?tkChip('Sugerido: '+esc(sg),'color-mix(in srgb,var(--mint) 22%,white)','#0B5E45'):tkChip('Sin sugerencia','#EEF1F0','#3F4A46'))+'</div><div class="bk-btns"><button class="pill pillR pk-b" onclick="openAsignar(\''+t.id+'\')">Asignar a pedido</button><button class="pill pillO pk-b" onclick="doIgnorar(\''+t.id+'\')">Ignorar</button></div>';}
+    else if(t.estatus==='asignado'){var p=byId(STATE.pedidos,t.pedidoId);right='<div class="bk-st">'+tkChip('Asignada','#E6F7F0','#0B5E45')+'</div><div class="bk-ped">'+(p?esc(p.cliente)+' &middot; Folio '+esc(p.folio)+' &middot; '+esc(p.periodo):'Pedido '+esc(t.pedidoId))+'</div>';}
+    else right='<div class="bk-st">'+tkChip('Ignorada','#FFF3D6','#7A5300')+'</div><div class="bk-btns"><button class="pill pillO pk-b" onclick="bkRecuperar(\''+t.id+'\')">Regresar a por asignar</button></div>';
+    return '<div class="bk-row"><div class="bk-amt"><b>'+mxn(t.monto)+'</b><span>'+fmtDate(t.fecha)+'</span></div>'+
+      '<div class="bk-info"><b>'+esc(t.remitente||'(sin nombre)')+'</b><span>'+[t.institucion,t.concepto?'concepto: '+t.concepto:'',t.referencia?'ref: '+t.referencia:''].filter(Boolean).map(esc).join(' &middot; ')+'</span>'+(t.clave?'<span class="bk-clave">Clave '+esc(t.clave)+'</span>':'')+'</div>'+
+      '<div class="bk-right">'+right+'</div></div>';
+  }).join('')+'</div>';
+}
+function bkTab(t){BK_TAB=t;render();}
+function bkRango(r){BK_RANGO=r;render();}
+function bkSearch(){BK_Q=(document.getElementById('bk-q')||{}).value||'';document.getElementById('bk-list').innerHTML=bkListHTML();}
+function bkRecuperar(id){showLoading();sb.from('transferencias').update({estatus:'pendiente'}).eq('id',id).then(function(r){if(r.error)throw r.error;return loadAll();}).then(function(){hideLoading();render();}).catch(function(e){hideLoading();alert('Error: '+((e&&e.message)?e.message:e));});}
+function bkExcel(){
+  if(typeof XLSX==='undefined'){alert('No se cargo la libreria de Excel (revisa tu conexion).');return;}
+  var rows=bkFiltered().map(function(t){var p=t.pedidoId?byId(STATE.pedidos,t.pedidoId):null;return {Fecha:t.fecha,Monto:t.monto,Ordenante:t.remitente,'Cuenta origen':t.cuentaOrigen,Institucion:t.institucion,Concepto:t.concepto,Referencia:t.referencia,'Clave de rastreo':t.clave,Estatus:t.estatus,Cliente:p?p.cliente:'',Folio:p?p.folio:'',Periodo:p?p.periodo:''};});
+  var ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Banco');XLSX.writeFile(wb,'Banco_'+BK_TAB+'.xlsx');
 }
 function doIgnorar(id){if(confirm('Marcar como ignorada? (no se asignara a ningun pedido)'))run('ignorarTransferencia',[id],null);}
 function norm(x){return String(x||'').toUpperCase().replace(/[ÁÀÄÂ]/g,'A').replace(/[ÉÈËÊ]/g,'E').replace(/[ÍÌÏÎ]/g,'I').replace(/[ÓÒÖÔ]/g,'O').replace(/[ÚÙÜÛ]/g,'U').replace(/Ñ/g,'N').replace(/[^A-Z0-9 ]/g,' ').split(/\s+/).filter(function(w){return w.length>=3;});}
