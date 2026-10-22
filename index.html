@@ -295,6 +295,11 @@
   .pl-pv-side{width:42%;padding:10px;border-right:1px solid;display:flex;flex-direction:column;gap:6px}.pl-pv-br{display:flex;gap:6px;align-items:center;font-size:12px;color:#111}.pl-pv-br img{width:22px;height:22px;border-radius:6px}
   .pl-pv-side i{font-style:normal;font-size:11px;padding:4px 8px;border-radius:99px;color:#1E2725}
   .pl-pv-main{flex:1;padding:12px;display:flex;flex-direction:column;gap:8px;background:#fff;color:#111;font-size:13px}.pl-pv-main button{align-self:flex-start;color:#fff;border-radius:99px;padding:6px 12px;font-weight:800;font-size:12px}.pl-pv-main span{height:8px;border-radius:99px;width:70%}
+
+  .bk-mail{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--bg);border-radius:12px;padding:10px 12px}.bk-mail b{font-family:ui-monospace,Menlo,monospace;font-size:15px;flex:1;word-break:break-all}
+  .bk-steps{margin:4px 0 0;padding-left:20px;font-size:13px;line-height:1.55;display:flex;flex-direction:column;gap:6px}
+  .bk-code{background:#EEF1F7;color:#2E4FA3;border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}.bk-code span{font-size:12px;font-weight:700}.bk-code b{font-size:26px;letter-spacing:.08em;font-family:ui-monospace,Menlo,monospace}.bk-code a{font-size:12px;color:#2E4FA3}
+  html[data-theme="dark"] .bk-mail{background:#1B201F}html[data-theme="dark"] .bk-code{background:#1E2340;color:#C7CCFF}
   @media print{
     .shell,.wrap,#modal-root,#loading,.login-ov,.tk-toast{display:none!important}
     html,body{margin:0;padding:0;background:#fff}
@@ -1917,6 +1922,31 @@ function plShowCred(nombre,slug,email,pass,existente){
 function plResetAdmin(id){if(!confirm('Generar una contrasena temporal nueva para el administrador de este cliente?'))return;var c=(PL_LIST||[]).filter(function(x){return x.id===id;})[0]||{};showLoading();plCall({accion:'reset_admin',id:id}).then(function(d){hideLoading();plShowCred(c.nombre,c.slug,d.email,d.password,false);}).catch(function(e){hideLoading();alert(e.message);});}
 function plActivo(id,on){if(!on&&!confirm('Suspender este cliente? Sus usuarios ya no podran ver datos hasta que lo reactives.'))return;showLoading();plCall({accion:'actualizar',id:id,activo:on}).then(function(){hideLoading();PL_LIST=null;render();}).catch(function(e){hideLoading();alert(e.message);});}
 
+/* ---------- bancos por cliente (correo propio) ---------- */
+var BK_CORREOS=null;
+function bkModo(){return (CUENTA.config&&CUENTA.config.banco_modo)==='gmail'?'gmail':'correo';}
+function bkCorreo(){return (CUENTA.slug||SLUG)+'@banco.iappcon.com';}
+function bkLoadCorreos(){sb.from('banco_correos').select('recibido,de,asunto,resultado,detalle').order('recibido',{ascending:false}).limit(30).then(function(r){BK_CORREOS=r.error?{error:r.error.message}:(r.data||[]);if(VIEW==='banco')render();});}
+function bkConfigHTML(){
+  if(BK_CORREOS===null){setTimeout(bkLoadCorreos,0);}
+  var mail=bkCorreo(),conf=(BK_CORREOS&&BK_CORREOS.filter)?BK_CORREOS.filter(function(c){return c.resultado==='confirmacion';})[0]:null;
+  var h='<div class="db-grid"><section class="db-card"><h2>Tu correo para avisos del banco</h2><div class="bk-mail"><b>'+esc(mail)+'</b><button class="pill pillR pk-b" onclick="navigator.clipboard.writeText(\''+mail+'\').then(function(){tkToast(\'Copiado\');})">Copiar</button></div>'+
+    '<div class="db-note">Todo aviso de transferencia que llegue a este correo se registra solo en <b>Banco</b>, al instante.</div>'+
+    '<ol class="bk-steps"><li>En el Gmail donde te llegan los avisos del banco: <b>Configuracion &rarr; Ver toda la configuracion &rarr; Reenvio y correo POP/IMAP &rarr; Agregar una direccion de reenvio</b> y pega el correo de arriba.</li>'+
+    '<li>Gmail manda un <b>codigo de confirmacion</b> a ese correo. Aparece aqui abajo en unos segundos: copialo y pegalo en Gmail.</li>'+
+    '<li>En Gmail crea un <b>filtro</b>: en "De" pon el correo del banco (por ejemplo <i>notificaciones@banregio.com</i>) &rarr; <b>Reenviar a</b> el correo de arriba.</li>'+
+    '<li>Listo. Cada transferencia aparecera en <b>Por asignar</b> con el cliente sugerido.</li></ol>'+
+    (conf?'<div class="bk-code"><span>Codigo de confirmacion de Gmail</span><b>'+esc((conf.detalle&&conf.detalle.codigo)||'Revisa el correo')+'</b>'+(conf.detalle&&conf.detalle.liga?'<a href="'+esc(conf.detalle.liga)+'" target="_blank">o confirma con esta liga</a>':'')+'</div>':'')+'</section>';
+  var R={nueva:['Transferencia registrada','#E6F7F0','#0B5E45'],duplicada:['Ya estaba registrada','#EEF1F0','#3F4A46'],no_reconocido:['No reconocido','#FFF3D6','#7A5300'],confirmacion:['Confirmacion de Gmail','#EEF1F7','#2E4FA3'],error:['Error','var(--rosaSoft)','var(--rosaDark)']};
+  h+='<section class="db-card"><h2>Ultimos correos recibidos <button class="db-link" style="margin-left:auto" onclick="BK_CORREOS=null;render()">Actualizar</button></h2>';
+  if(!BK_CORREOS)h+='<div class="db-empty">Cargando...</div>';
+  else if(BK_CORREOS.error)h+='<div class="tk-warn">'+esc(BK_CORREOS.error)+'</div>';
+  else if(!BK_CORREOS.length)h+='<div class="db-empty">Todavia no llega ningun correo. Haz el paso 1.</div>';
+  else h+=BK_CORREOS.map(function(c){var x=R[c.resultado]||['-','#EEE','#333'];var dt=c.detalle||{};return '<div class="pd-it"><span style="min-width:0"><b>'+esc(c.asunto||'(sin asunto)')+'</b><br><span class="db-note">'+tkFmtDT(c.recibido)+(c.resultado==='nueva'||c.resultado==='duplicada'?' &middot; '+mxn(dt.monto)+' &middot; '+esc(dt.remitente||''):'')+'</span></span>'+tkChip(x[0],x[1],x[2])+'</div>';}).join('');
+  h+=(BK_CORREOS&&BK_CORREOS.some&&BK_CORREOS.some(function(c){return c.resultado==='no_reconocido';}))?'<div class="db-note" style="margin-top:8px">"No reconocido" = un correo que no parece aviso de transferencia o de un banco con formato nuevo. Mandanos un ejemplo y lo agregamos.</div>':'';
+  return h+'</section></div>';
+}
+
 /* ---------- ventas y cobranza ---------- */
 function kpi(label,val,color){return '<div class="card" style="padding:12px 8px;text-align:center;margin:0"><div style="font-size:11px;color:var(--inkSoft)">'+label+'</div><div class="tnum" style="font-size:16px;font-weight:800;color:'+color+';margin-top:2px">'+mxn(val)+'</div></div>';}
 function kpiG(label,val,margen){return '<div class="card" style="padding:12px 8px;text-align:center;margin:0"><div style="font-size:11px;color:var(--inkSoft)">'+label+'</div><div class="tnum" style="font-size:16px;font-weight:800;color:'+(val>=0?'var(--green)':'var(--rosaDark)')+';margin-top:2px">'+mxn(val)+'</div><div style="font-size:10px;color:var(--inkSoft)">'+margen+'% margen</div></div>';}
@@ -2291,7 +2321,7 @@ function submitAddItems(){
 
 /* ---------- banco / transferencias ---------- */
 var ASG_TID='', ASG_AMT=0, ASG_CLI='';
-function revisarTransfers(){
+function revisarTransfers(){if(bkModo()==='correo'){showLoading();BK_CORREOS=null;loadAll().then(function(){hideLoading();render();tkToast('Actualizado. Los avisos llegan solos en cuanto el banco los manda.');}).catch(function(){hideLoading();});return;}
   showLoading();
   var res=null;
   sb.functions.invoke('banco-gmail',{body:{}}).then(function(r){
@@ -2304,7 +2334,7 @@ function revisarTransfers(){
     alert((nuevas?nuevas+' transferencia(s) nueva(s) del banco.\n':'No hay transferencias nuevas en el banco.\n')+(n>0?(n+' pendiente(s) por asignar.'):'Todo al dia.'));
   }).catch(function(e){hideLoading();render();alert('Error al consultar el banco: '+((e&&e.message)?e.message:e));});
 }
-function cargarUltimaLectura(){
+function cargarUltimaLectura(){if(bkModo()==='correo'){sb.from('banco_correos').select('recibido').order('recibido',{ascending:false}).limit(1).then(function(r){var el=document.getElementById('ultLect');if(!el)return;el.textContent=(r.data&&r.data.length)?tkFmtDT(r.data[0].recibido):'Aun sin avisos';});return;}
   sb.from('banco_lecturas').select('fecha,origen,ok').order('fecha',{ascending:false}).limit(1).then(function(r){
     var el=document.getElementById('ultLect');if(!el)return;
     if(r.error||!r.data||!r.data.length){el.textContent='Sin lecturas todavia';return;}
@@ -2329,13 +2359,16 @@ function renderTransferencias(){
   var sum=function(a){return a.reduce(function(x,t){return x+(Number(t.monto)||0);},0);};
   var rangoTxt={'7':'ultimos 7 dias','30':'ultimos 30 dias',mes:'este mes',todo:'todo'}[BK_RANGO];
   var h='<div class="bk-kpis">';
-  h+='<div class="bk-read"><span class="bk-lbl">Lectura del banco</span><b id="ultLect">Ultima lectura: ...</b><span class="bk-note">Automatica todos los dias a las 7:00 a.m.</span><button class="pill pillR" onclick="revisarTransfers()">&#8635; Consultar banco ahora</button></div>';
+  if(bkModo()==='gmail')h+='<div class="bk-read"><span class="bk-lbl">Lectura del banco</span><b id="ultLect">Ultima lectura: ...</b><span class="bk-note">Automatica todos los dias a las 7:00 a.m.</span><button class="pill pillR" onclick="revisarTransfers()">&#8635; Consultar banco ahora</button></div>';
+  else h+='<div class="bk-read"><span class="bk-lbl">Avisos del banco</span><b id="ultLect">Ultimo aviso: ...</b><span class="bk-note">Llegan solos a '+esc(bkCorreo())+'</span><button class="pill pillR" onclick="revisarTransfers()">&#8635; Actualizar</button></div>';
   h+='<div class="bk-k"><span class="bk-lbl">Recibido &middot; '+rangoTxt+'</span><b>'+mxn(sum(enRango))+'</b><span class="bk-note">'+enRango.length+' movimiento'+(enRango.length!==1?'s':'')+'</span></div>';
   h+='<div class="bk-k bk-pink"><span class="bk-lbl">Por asignar</span><b>'+pend.length+'</b><span class="bk-note">'+mxn(sum(pend))+' sin ligar a un pedido</span></div></div>';
   setTimeout(cargarUltimaLectura,0);
   var nA=trs.filter(function(t){return t.estatus==='asignado'&&bkRangoOk(t.fecha);}).length,nI=trs.filter(function(t){return t.estatus==='ignorado'&&bkRangoOk(t.fecha);}).length;
   var tabs=[['pend','Por asignar',pend.length],['asig','Asignadas',nA],['ign','Ignoradas',nI],['todas','Todas',enRango.length+nI]];
-  h+='<div class="tk-tabs">'+tabs.map(function(t){return '<button class="tk-tab'+(BK_TAB===t[0]?' on':'')+'" onclick="bkTab(\''+t[0]+'\')">'+t[1]+' ('+t[2]+')</button>';}).join('');
+  if(bkModo()==='correo')tabs.push(['config','Configurar banco','']);
+  h+='<div class="tk-tabs">'+tabs.map(function(t){return '<button class="tk-tab'+(BK_TAB===t[0]?' on':'')+'" onclick="bkTab(\''+t[0]+'\')">'+t[1]+(t[2]!==''?' ('+t[2]+')':'')+'</button>';}).join('');
+  if(BK_TAB==='config')return h+'</div>'+bkConfigHTML();
   h+='<select class="bk-sel" onchange="bkRango(this.value)">'+[['mes','Este mes'],['7','Ultimos 7 dias'],['30','Ultimos 30 dias'],['todo','Todo']].map(function(o){return '<option value="'+o[0]+'"'+(BK_RANGO===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>';
   h+='<input id="bk-q" class="tk-q" placeholder="Buscar ordenante, concepto o clave..." value="'+esc(BK_Q)+'" oninput="bkSearch()"><button class="pill pillR bk-xl" onclick="bkExcel()">Exportar Excel</button></div>';
   h+='<div id="bk-list">'+bkListHTML()+'</div>';
