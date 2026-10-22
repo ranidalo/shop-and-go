@@ -1,4 +1,4 @@
-const CACHE='shopgo-v7';
+const CACHE='shopgo-v8';
 self.addEventListener('install',function(e){self.skipWaiting();});
 self.addEventListener('activate',function(e){e.waitUntil(self.clients.claim());});
 self.addEventListener('fetch',function(e){
