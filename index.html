@@ -6,6 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root{
     --ink:#15201C; --inkSoft:#5C6B64; --rosa:#10A37B; --rosaDark:#15201C; --rosaSoft:#E4F6EF;
@@ -127,6 +128,7 @@
   .snav{display:flex;align-items:center;gap:12px;width:100%;min-height:46px;padding:0 14px;border-radius:999px;background:transparent;color:#1E2725;font-size:16px;font-weight:500;text-align:left}
   .snav:hover{background:rgba(0,0,0,.05)}
   .snav.on{background:#111;color:#fff;font-weight:700}
+  .snav span{white-space:nowrap}
   .sbadge{margin-left:auto;background:var(--rosa);color:#fff;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px}
   .sper{margin-top:auto;background:#111;color:#fff;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:4px}
   .sper span{font-size:12px;color:var(--mint);font-weight:700}.sper b{font-size:17px}
@@ -158,6 +160,41 @@
     .wrap{padding:16px 14px 0}
     .mtitle{font-size:22px}.hide-m{display:none}
   }
+
+  /* ===== Tickets y cobro ===== */
+  .tk-warn{background:#FFF3D6;color:#7A5300;border-radius:12px;padding:10px 14px;font-size:13px;margin-bottom:12px}
+  .tk-top{border:1px solid var(--line);border-radius:18px;padding:14px 16px;margin-bottom:14px}
+  .tk-toprow{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+  .tk-per{min-width:180px}.tk-per select{height:42px;padding:0 10px}
+  .tk-prog{flex:1 1 220px;display:flex;flex-direction:column;gap:6px;padding-bottom:4px}
+  .tk-progtxt{display:flex;justify-content:space-between;font-size:14px}
+  .tk-bar{height:10px;border-radius:99px;background:#EEF1F0;overflow:hidden}.tk-bar div{height:100%;background:var(--mint);border-radius:99px}
+  .tk-acts{display:flex;gap:8px;flex-wrap:wrap}.tk-acts .pill{height:42px;font-size:13px;padding:0 16px}
+  .tk-black{background:#111;color:#fff}
+  .tk-cfg{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;border-top:1px solid var(--line);margin-top:14px;padding-top:14px}
+  .tk-cfg textarea{min-height:70px;font-size:14px}.tk-cfg input{font-size:14px}.tk-cfgbtn{display:flex;align-items:flex-end}
+  .tk-tabs{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+  .tk-tab{height:38px;padding:0 14px;border-radius:999px;border:1.5px solid #DDE4E1;background:#fff;color:#222;font-weight:700;font-size:13px}
+  .tk-tab.on{background:#111;border-color:#111;color:#fff}
+  .tk-q{flex:1 1 180px;height:38px;border-radius:999px;background:var(--bg);border:none;padding:0 14px;font-size:14px}
+  .tk-grid{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start}
+  .tk-list{flex:1 1 280px;max-width:360px;display:flex;flex-direction:column;gap:8px;max-height:calc(100vh / var(--z) - 120px);overflow-y:auto;padding-right:2px}
+  .tk-item{display:flex;gap:10px;align-items:center;width:100%;padding:12px;border-radius:16px;border:1.5px solid var(--line);background:#fff;text-align:left;color:#111}
+  .tk-item.on{border-color:#111;background:color-mix(in srgb,var(--mint) 12%,white)}
+  .tk-itxt{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}.tk-itxt b{font-size:14px}
+  .tk-chips{display:flex;gap:6px;flex-wrap:wrap}
+  .tk-chip{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap}
+  .tk-itot{font-weight:800;font-size:14px;white-space:nowrap}
+  .tk-det{flex:999 1 460px;min-width:0;display:flex;flex-direction:column;gap:14px}
+  .tk-box{border:1px solid var(--line);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:10px}
+  .tk-dhead b{font-size:18px;display:block}.tk-dhead span{font-size:13px;color:var(--inkSoft)}
+  .tk-btns{display:flex;flex-wrap:wrap;gap:8px}.tk-btns .pill{flex:1 1 130px;font-size:13px}.tk-btns .tk-main{flex:2 1 220px;font-size:14px}
+  .tk-rem{background:var(--rosaSoft);color:var(--rosaDark);width:100%;font-size:13px}
+  .tk-msg{background:var(--bg);border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.5}.tk-msg span{font-weight:700;color:var(--inkSoft);font-size:12px}
+  .tk-meta{font-size:12px;color:var(--inkSoft)}.tk-meta a{color:var(--rosaDark)}
+  .tk-prev{overflow-x:auto}
+  .tk-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#111;color:#fff;padding:12px 18px;border-radius:12px;font-size:14px;font-weight:600;z-index:200;max-width:90vw;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+  @media(max-width:860px){.tk-list{max-width:none;max-height:46vh}.tk-acts .pill{flex:1 1 auto}.tk-prev .rep-card{zoom:.66}}
   @media print{.side,.topbar,.sidebg{display:none!important}body{zoom:1}}
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,800&display=swap">
@@ -353,7 +390,8 @@ function run(fn,args,cb){
   pr.then(function(){return loadAll();}).then(function(){hideLoading();READY=true;if(cb)cb();render();}).catch(function(err){hideLoading();alert('Error: '+((err&&err.message)?err.message:err));});
 }
 
-function loadAll(){
+function loadAll(){return loadAllCore().then(function(){return loadEnvios();});}
+function loadAllCore(){
   return Promise.all([
     sb.from('clientes').select('id,nombre,telefono').limit(10000),
     sb.from('productos').select('nombre,precio,categoria').limit(10000),
@@ -458,17 +496,18 @@ function render(){
   else if(VIEW==='agenda'){h+=renderAgenda();}
   else if(VIEW==='banco'){h+=renderTransferencias();}
   else if(VIEW==='packing'){h+=renderPacking();}
-  else{h+=renderReportes();}
+  else{h+=renderTickets();}
   h+='</div>';
 
   document.getElementById('app').innerHTML=h;
+  if(VIEW==='reportes')tkAfterRender();
 }
 function tab(id,label){var on=VIEW===id;return '<button onclick="setView(\''+id+'\')" class="navbtn'+(on?' navbtn-on':'')+'">'+label+'</button>';}
 function setView(v){VIEW=v;SIDE_OPEN=false;render();try{window.scrollTo(0,0);}catch(e){}}
 /* ---------- estructura: menu lateral, cuenta (SaaS) ---------- */
 var SIDE_OPEN=false, USER_EMAIL='';
 var CUENTA={nombre:'Shop & Go',logo:null,primario:'#5FD3B0',acento:'#E5127D',config:{}};
-var VIEW_TITLES={pedidos:'Pedidos',clientes:'Cobranza',banco:'Banco',packing:'Packing',reportes:'Tickets y reportes',pendientes:'Pendientes',agenda:'Agenda',ventas:'Ventas',costos:'Costos',gastos:'Gastos'};
+var VIEW_TITLES={pedidos:'Pedidos',clientes:'Cobranza',banco:'Banco',packing:'Packing',reportes:'Tickets y cobro',pendientes:'Pendientes',agenda:'Agenda',ventas:'Ventas',costos:'Costos',gastos:'Gastos'};
 var NAV_ICON={
   pedidos:'M6 3h12l1 18H5zM9 7a3 3 0 0 0 6 0',
   clientes:'M16 19v-1a4 4 0 0 0-8 0v1M12 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM20 19v-1a3 3 0 0 0-2-2.8M4 19v-1a3 3 0 0 1 2-2.8',
@@ -482,7 +521,7 @@ var NAV_ICON={
   gastos:'M3 7h18v10H3zM3 11h18M7 15h3'
 };
 var NAV_GROUPS=[
-  ['Operacion',[['pedidos','Pedidos'],['clientes','Cobranza','cli'],['banco','Banco','trans'],['packing','Packing'],['reportes','Tickets y reportes'],['pendientes','Pendientes'],['agenda','Agenda']]],
+  ['Operacion',[['pedidos','Pedidos'],['clientes','Cobranza','cli'],['banco','Banco','trans'],['packing','Packing'],['reportes','Tickets y cobro','tk'],['pendientes','Pendientes'],['agenda','Agenda']]],
   ['Finanzas',[['ventas','Ventas'],['costos','Costos'],['gastos','Gastos']]]
 ];
 function cuentaLogo(){return CUENTA.logo||LOGO;}
@@ -492,7 +531,7 @@ function renderSide(b){
   NAV_GROUPS.forEach(function(g){
     h+='<div class="sgrp"><div class="sglbl">'+g[0]+'</div>';
     g[1].forEach(function(it){
-      var n=it[2]==='cli'?b.cliSaldo:(it[2]==='trans'?b.nTrans:0);
+      var n=it[2]==='cli'?b.cliSaldo:(it[2]==='trans'?b.nTrans:(it[2]==='tk'?tkSinEnviar():0));
       h+='<button class="snav'+(VIEW===it[0]?' on':'')+'" onclick="setView(\''+it[0]+'\')">'+svgIcon(NAV_ICON[it[0]])+'<span>'+it[1]+'</span>'+(n?'<span class="sbadge">'+n+'</span>':'')+'</button>';
     });
     h+='</div>';
@@ -890,6 +929,139 @@ function downloadRepAll(){
     html2canvas(el,{scale:2,backgroundColor:'#ffffff',width:520,windowWidth:640}).then(function(canvas){var data=canvas.toDataURL('image/png').split(',')[1];zip.file(String(i+1).padStart(2,'0')+'_'+safe(REP_LIST[i].cliente)+'.png',data,{base64:true});i++;next();}).catch(function(e){hideLoading();alert('Error: '+e);});
   }
   next();
+}
+
+/* ---------- TICKETS Y COBRO (envio por WhatsApp con seguimiento) ---------- */
+var TK_ENV={}, TK_SEL='', TK_TAB='todos', TK_Q='', TK_CFG_OPEN=false, TK_BLOB={}, TK_ENV_OK=true;
+var TK_MSG_DEF={msgTicket:'Hola {cliente}! Te comparto el desglose de tu pedido de Shop & Go ({periodo}). Tu total es {total}. Cualquier duda me dices!',
+                msgCobro:'Hola {cliente}! Te recuerdo tu saldo pendiente en Shop & Go: {saldo} ({periodo}). Cualquier duda me dices!'};
+function loadEnvios(){
+  return sb.from('ticket_envios').select('pedido_id,tipo,enviado_at').order('enviado_at',{ascending:true}).limit(20000).then(function(r){
+    if(r.error){TK_ENV_OK=false;TK_ENV={};return;}
+    TK_ENV_OK=true;var m={};
+    (r.data||[]).forEach(function(e){var k=String(e.pedido_id);if(!m[k])m[k]={ticket:null,rec:0,recLast:null};if(e.tipo==='ticket')m[k].ticket=e.enviado_at;else{m[k].rec++;m[k].recLast=e.enviado_at;}});
+    TK_ENV=m;
+  }).catch(function(){TK_ENV_OK=false;TK_ENV={};});
+}
+function tkCfg(){var o=repCfg();var c=(CUENTA.config&&CUENTA.config.ticket)||{};for(var k in c)if(c[k]!=null&&c[k]!=='')o[k]=c[k];
+  if(!o.msgTicket)o.msgTicket=(function(){try{return localStorage.getItem('shopgo_repwamsg')||'';}catch(e){return '';}})()||TK_MSG_DEF.msgTicket;
+  if(!o.msgCobro)o.msgCobro=TK_MSG_DEF.msgCobro;return o;}
+function tkFill(t,o,per){return String(t).replace(/\{cliente\}/g,(o.cliente||'').split(' ')[0]).replace(/\{total\}/g,mxn(o.total)).replace(/\{saldo\}/g,mxn(o.saldo)).replace(/\{periodo\}/g,per);}
+function tkWaUrl(tel,text){var t=(tel||'').replace(/\D/g,'');var num=t.length===10?'52'+t:t;return 'https://wa.me/'+num+'?text='+encodeURIComponent(text);}
+function tkList(){
+  var ps=periodos();if(!REP_PER||ps.indexOf(REP_PER)<0)REP_PER=defaultPeriodo()||ps[0]||'';
+  return STATE.pedidos.filter(function(p){return !p.cancelado&&p.periodo===REP_PER;}).map(function(p){var v=pedVista(p);
+    return {id:String(p.id),folio:p.folio,cliente:p.cliente,telefono:p.telefono||clienteTel(p.cliente)||'',total:v.total,pagado:v.pagado,saldo:Math.max(0,v.saldo),
+      items:(p.items||[]).map(function(it){return {cant:it.cantidad,desc:it.concepto,costo:it.precioUnit,total:itemImp(it)};}),env:TK_ENV[String(p.id)]||{ticket:null,rec:0,recLast:null}};
+  }).sort(function(a,b){return a.cliente.localeCompare(b.cliente,'es');});
+}
+function tkSinEnviar(){if(!READY)return 0;return tkList().filter(function(o){return !o.env.ticket;}).length;}
+function tkFmtDT(iso){if(!iso)return '';var d=new Date(iso);return d.toLocaleDateString('es-MX',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('es-MX',{hour:'numeric',minute:'2-digit'});}
+function tkChip(t,bg,fg){return '<span class="tk-chip" style="background:'+bg+';color:'+fg+'">'+t+'</span>';}
+function renderTickets(){
+  var cfg=tkCfg(),ps=periodos(),all=tkList();REP_LIST=all;
+  var nEnv=all.filter(function(o){return o.env.ticket;}).length,nSal=all.filter(function(o){return o.saldo>0.001;}).length;
+  var f={todos:function(){return true;},sin:function(o){return !o.env.ticket;},env:function(o){return !!o.env.ticket;},saldo:function(o){return o.saldo>0.001;}}[TK_TAB]||function(){return true;};
+  var q=TK_Q.trim().toLowerCase();
+  var list=all.filter(f).filter(function(o){return !q||o.cliente.toLowerCase().indexOf(q)>=0;});
+  if(!byId(all,TK_SEL))TK_SEL=list.length?list[0].id:(all.length?all[0].id:'');
+  var h='';
+  if(!TK_ENV_OK)h+='<div class="tk-warn">Falta crear la tabla de seguimiento (<b>ticket_envios</b>) en Supabase. Puedes ver y enviar tickets, pero no se guardara quien ya lo recibio.</div>';
+  h+='<div class="tk-top"><div class="tk-toprow">';
+  h+='<div class="tk-per"><label class="lbl">Periodo</label><select id="rep-per" onchange="tkSetPer()">'+ps.map(function(p){return '<option'+(p===REP_PER?' selected':'')+'>'+esc(p)+'</option>';}).join('')+'</select></div>';
+  h+='<div class="tk-prog"><div class="tk-progtxt"><b>Tickets enviados</b><span>'+nEnv+' de '+all.length+'</span></div><div class="tk-bar"><div style="width:'+(all.length?Math.round(nEnv/all.length*100):0)+'%"></div></div></div>';
+  h+='<div class="tk-acts"><button class="pill pillO" onclick="tkToggleCfg()">'+(TK_CFG_OPEN?'Ocultar textos':'Editar textos')+'</button><button class="pill tk-black" onclick="downloadRepAll()">Descargar todos (ZIP)</button><button class="pill pillR" onclick="tkExcel()">Exportar Excel</button></div></div>';
+  if(TK_CFG_OPEN){
+    h+='<div class="tk-cfg">';
+    h+='<div><label class="lbl">Encabezado (fechas de compra)</label><input id="rep-head" value="'+esc(cfg.head)+'"></div>';
+    h+='<div><label class="lbl">Frase a subrayar</label><input id="rep-sub" value="'+esc(cfg.sub)+'"></div>';
+    h+='<div><label class="lbl">Linea de recoger</label><textarea id="rep-pick">'+esc(cfg.pick)+'</textarea></div>';
+    h+='<div><label class="lbl">Pie de pago</label><textarea id="rep-foot">'+esc(cfg.foot)+'</textarea></div>';
+    h+='<div><label class="lbl">Cuenta - numero</label><input id="rep-num" value="'+esc(cfg.num)+'"></div>';
+    h+='<div><label class="lbl">Cuenta - nombre/banco</label><input id="rep-bank" value="'+esc(cfg.bank)+'"></div>';
+    h+='<div><label class="lbl">Mensaje del ticket &middot; {cliente} {total} {periodo}</label><textarea id="tk-mt">'+esc(cfg.msgTicket)+'</textarea></div>';
+    h+='<div><label class="lbl">Mensaje de recordatorio &middot; {cliente} {saldo} {periodo}</label><textarea id="tk-mc">'+esc(cfg.msgCobro)+'</textarea></div>';
+    h+='<div class="tk-cfgbtn"><button class="pill pillR" onclick="tkSaveCfg()">Guardar textos</button></div></div>';
+  }
+  h+='</div>';
+  var tabs=[['todos','Todos',all.length],['sin','Sin enviar',all.length-nEnv],['env','Enviados',nEnv],['saldo','Con saldo',nSal]];
+  h+='<div class="tk-tabs">'+tabs.map(function(t){return '<button class="tk-tab'+(TK_TAB===t[0]?' on':'')+'" onclick="tkTab(\''+t[0]+'\')">'+t[1]+' ('+t[2]+')</button>';}).join('')+'<input id="tk-q" class="tk-q" placeholder="Buscar cliente..." value="'+esc(TK_Q)+'" oninput="tkSearch()"></div>';
+  if(!all.length)return h+emptyBox('Sin pedidos en este periodo','Elige otro periodo o registra pedidos.');
+  h+='<div class="tk-grid"><div class="tk-list" id="tk-list">'+tkListHTML(list)+'</div>';
+  var o=byId(all,TK_SEL);
+  h+='<div class="tk-det" id="tk-det">'+(o?tkDetHTML(o,cfg):'')+'</div></div>';
+  // tarjetas fuera de pantalla para el ZIP
+  h+='<div style="position:absolute;left:-12000px;top:0" aria-hidden="true">'+all.map(function(x,i){return '<div id="rc-'+i+'">'+repCardHTML(x.cliente,x.items,cfg)+'</div>';}).join('')+'</div>';
+  return h;
+}
+function tkListHTML(list){
+  if(!list.length)return '<div style="color:var(--inkSoft);padding:20px 4px">Nada en este filtro.</div>';
+  return list.map(function(o){
+    var sent=!!o.env.ticket;
+    var c1=o.env.rec?tkChip('Recordatorio x'+o.env.rec,'#FFF3D6','#7A5300'):(sent?tkChip('Ticket enviado','#E6F7F0','#0B5E45'):tkChip('Sin enviar','#EEF1F0','#3F4A46'));
+    var c2=o.saldo>0.001?tkChip('Saldo '+mxn(o.saldo),'var(--rosaSoft)','var(--rosaDark)'):tkChip('Pagado','#111','#fff');
+    return '<button class="tk-item'+(o.id===TK_SEL?' on':'')+'" data-id="'+esc(o.id)+'" onclick="tkPick(\''+o.id+'\')"><div class="tk-itxt"><b>'+esc(o.cliente)+'</b><div class="tk-chips">'+c1+c2+'</div></div><span class="tk-itot">'+mxn(o.total)+'</span></button>';
+  }).join('');
+}
+function tkDetHTML(o,cfg){
+  var per=REP_PER,i=REP_LIST.indexOf(o),h='<div class="tk-box">';
+  var tel=o.telefono;
+  h+='<div class="tk-dhead"><div><b>'+esc(o.cliente)+'</b><span>'+(tel?esc(tel):'Sin telefono')+' &middot; Total '+mxn(o.total)+(o.saldo>0.001?' &middot; Saldo '+mxn(o.saldo):' &middot; Pagado')+'</span></div></div>';
+  h+='<div class="tk-btns">';
+  if(tel)h+='<button class="pill pillR tk-main" onclick="tkSend(\''+o.id+'\')">'+(o.env.ticket?'Reenviar ticket por WhatsApp':'Enviar ticket por WhatsApp')+'</button>';
+  else h+='<button class="pill tk-main" disabled style="background:#EEF1F0;color:#6B7772">Sin telefono: agregalo en el pedido</button>';
+  h+='<button class="pill pillO" onclick="tkCopy(\''+o.id+'\')">Copiar imagen</button><button class="pill pillO" onclick="downloadRepOne('+i+')">Descargar PNG</button></div>';
+  if(o.saldo>0.001&&tel)h+='<button class="pill tk-rem" onclick="tkRemind(\''+o.id+'\')">Enviar recordatorio de cobro ('+mxn(o.saldo)+')</button>';
+  h+='<div class="tk-msg"><span>Mensaje que se envia &middot; </span>'+esc(tkFill(cfg.msgTicket,o,per))+'</div>';
+  if(o.env.ticket)h+='<div class="tk-meta">Ticket enviado el '+esc(tkFmtDT(o.env.ticket))+(o.env.rec?' &middot; '+o.env.rec+' recordatorio(s), el ultimo el '+esc(tkFmtDT(o.env.recLast)):'')+' &middot; <a href="#" onclick="tkUnsend(\''+o.id+'\');return false">marcar como no enviado</a></div>';
+  h+='</div><div class="tk-prev" id="tk-prev">'+repCardHTML(o.cliente,o.items,cfg)+'</div>';
+  return h;
+}
+function tkSetPer(){REP_PER=document.getElementById('rep-per').value;TK_SEL='';render();}
+function tkTab(t){TK_TAB=t;render();}
+function tkSearch(){TK_Q=document.getElementById('tk-q').value;var all=REP_LIST;var f={todos:function(){return true;},sin:function(o){return !o.env.ticket;},env:function(o){return !!o.env.ticket;},saldo:function(o){return o.saldo>0.001;}}[TK_TAB];var q=TK_Q.trim().toLowerCase();document.getElementById('tk-list').innerHTML=tkListHTML(all.filter(f).filter(function(o){return !q||o.cliente.toLowerCase().indexOf(q)>=0;}));}
+function tkPick(id){TK_SEL=id;var o=byId(REP_LIST,id);document.getElementById('tk-det').innerHTML=o?tkDetHTML(o,tkCfg()):'';Array.prototype.forEach.call(document.querySelectorAll('.tk-item'),function(b){b.classList.toggle('on',b.getAttribute('data-id')===id);});tkAfterRender();if(window.innerWidth<=860){var d=document.getElementById('tk-det');if(d)d.scrollIntoView({behavior:'smooth',block:'start'});}}
+function tkToggleCfg(){TK_CFG_OPEN=!TK_CFG_OPEN;render();}
+function tkSaveCfg(){
+  var t={head:val('rep-head'),pick:val('rep-pick'),foot:val('rep-foot'),sub:val('rep-sub'),num:val('rep-num'),bank:val('rep-bank'),msgTicket:val('tk-mt'),msgCobro:val('tk-mc')};
+  try{localStorage.setItem('shopgo_repcfg',JSON.stringify(t));}catch(e){}
+  var conf=Object.assign({},CUENTA.config||{},{ticket:t});CUENTA.config=conf;TK_BLOB={};
+  if(CUENTA.id){sb.from('cuentas').update({config:conf}).eq('id',CUENTA.id).then(function(r){if(r.error)alert('Se guardo solo en este equipo (falta permiso en Supabase): '+r.error.message);});}
+  TK_CFG_OPEN=false;render();
+}
+// imagen del ticket seleccionado (se prepara antes para que compartir sea inmediato)
+function tkAfterRender(){var o=byId(REP_LIST,TK_SEL);if(!o||TK_BLOB[o.id]||typeof html2canvas==='undefined')return;var el=repEl(REP_LIST.indexOf(o));if(!el)return;
+  TK_BLOB[o.id]=html2canvas(el,{scale:2,backgroundColor:'#ffffff',width:520,windowWidth:640}).then(function(c){return new Promise(function(res){c.toBlob(function(b){res(b);},'image/png');});});}
+function tkBlob(o){if(!TK_BLOB[o.id])tkAfterRender();return TK_BLOB[o.id]||Promise.reject(new Error('No se pudo generar la imagen'));}
+function tkLog(id,tipo){
+  var now=new Date().toISOString();var e=TK_ENV[id]||(TK_ENV[id]={ticket:null,rec:0,recLast:null});
+  if(tipo==='ticket'){if(!e.ticket)e.ticket=now;}else{e.rec++;e.recLast=now;}
+  if(TK_ENV_OK)sb.from('ticket_envios').insert({pedido_id:id,tipo:tipo,usuario:USER_EMAIL||null}).then(function(r){if(r.error)console.warn(r.error.message);});
+  render();
+}
+function tkIsMobile(){return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);}
+function tkSend(id){
+  var o=byId(REP_LIST,id);if(!o)return;var text=tkFill(tkCfg().msgTicket,o,REP_PER);
+  if(tkIsMobile()&&navigator.canShare){
+    tkBlob(o).then(function(b){var file=new File([b],'Ticket_'+safe(o.cliente)+'.png',{type:'image/png'});
+      if(navigator.canShare({files:[file]}))return navigator.share({files:[file],text:text}).then(function(){tkLog(id,'ticket');});
+      window.open(tkWaUrl(o.telefono,text),'_blank');tkLog(id,'ticket');
+    }).catch(function(e){if(e&&e.name==='AbortError')return;window.open(tkWaUrl(o.telefono,text),'_blank');tkLog(id,'ticket');});
+    return;
+  }
+  var copied=tkCopyBlob(o);window.open(tkWaUrl(o.telefono,text),'_blank');
+  copied.then(function(){tkToast('Imagen copiada. En el chat presiona Ctrl+V para pegarla y enviala.');}).catch(function(){tkToast('Abre el chat y adjunta la imagen (usa Descargar PNG).');});
+  tkLog(id,'ticket');
+}
+function tkRemind(id){var o=byId(REP_LIST,id);if(!o)return;window.open(tkWaUrl(o.telefono,tkFill(tkCfg().msgCobro,o,REP_PER)),'_blank');tkLog(id,'recordatorio');}
+function tkCopyBlob(o){try{if(!navigator.clipboard||typeof ClipboardItem==='undefined')return Promise.reject();return navigator.clipboard.write([new ClipboardItem({'image/png':tkBlob(o)})]);}catch(e){return Promise.reject(e);}}
+function tkCopy(id){var o=byId(REP_LIST,id);if(!o)return;tkCopyBlob(o).then(function(){tkToast('Imagen copiada. Pegala con Ctrl+V.');}).catch(function(){tkToast('Tu navegador no permite copiar imagenes; usa Descargar PNG.');});}
+function tkUnsend(id){if(!confirm('Marcar este ticket como NO enviado?'))return;delete TK_ENV[id];if(TK_ENV_OK)sb.from('ticket_envios').delete().eq('pedido_id',id).then(function(){});render();}
+function tkToast(t){var d=document.createElement('div');d.className='tk-toast';d.textContent=t;document.body.appendChild(d);setTimeout(function(){d.remove();},4200);}
+function tkExcel(){
+  if(typeof XLSX==='undefined'){alert('No se cargo la libreria de Excel (revisa tu conexion).');return;}
+  var rows=REP_LIST.map(function(o){return {Periodo:REP_PER,Folio:o.folio,Cliente:o.cliente,Telefono:o.telefono,Total:o.total,Pagado:o.pagado,Saldo:o.saldo,'Ticket enviado':o.env.ticket?tkFmtDT(o.env.ticket):'No',Recordatorios:o.env.rec,'Ultimo recordatorio':o.env.recLast?tkFmtDT(o.env.recLast):''};});
+  var ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Tickets');XLSX.writeFile(wb,'Tickets_'+safe(REP_PER)+'.xlsx');
 }
 
 /* ---------- ventas y cobranza ---------- */
