@@ -229,6 +229,13 @@
   .hy-ok{flex:1;font-size:14px;color:#0B5E45;font-weight:700;padding:6px 0}
   .hy-go{height:40px;font-size:13px;margin-top:auto}
   @media(max-width:860px){.hy-kp{grid-template-columns:repeat(2,minmax(0,1fr));width:100%}.hy-hero h2{font-size:24px}}
+
+  /* ===== Usuarios y contrasenas ===== */
+  .lg-forgot{background:none;color:var(--rosaDark);font-size:13px;font-weight:700;margin-top:10px;padding:4px}
+  #lg-fp input,#pw-ov input{margin-bottom:10px}
+  .suser span{display:block;font-weight:500;color:#3F4A46;font-size:11px}
+  .us-cred{display:grid;gap:8px}.us-cred>div{background:var(--bg);border-radius:12px;padding:10px 12px}.us-cred span{display:block;font-size:12px;color:var(--inkSoft)}.us-cred b{font-size:16px;word-break:break-all}
+  .us-pass{font-family:ui-monospace,Menlo,monospace;font-size:20px!important;letter-spacing:.04em}
   @media print{
     .shell,.wrap,#modal-root,#loading,.login-ov,.tk-toast{display:none!important}
     html,body{margin:0;padding:0;background:#fff}
@@ -399,9 +406,25 @@
     <input id="lg-pass" type="password" placeholder="Contrasena" autocomplete="current-password" onkeydown="lgKey(event)">
     <button id="lg-btn" class="login-btn" onclick="doLogin()">Entrar</button>
     <div id="lg-err" class="login-err"></div>
+    <button class="lg-forgot" onclick="lgForgot(true)">&iquest;Olvidaste tu contrase&ntilde;a?</button>
+    <div id="lg-fp" class="hidden" style="margin-top:10px;text-align:left">
+      <div style="font-size:13px;color:var(--inkSoft);margin-bottom:8px">Escribe tu correo y te mandamos una liga para crear una contrase&ntilde;a nueva. Si no te llega, p&iacute;dele al administrador que te la restablezca.</div>
+      <input id="lg-fp-email" type="email" placeholder="Correo">
+      <button class="login-btn" onclick="lgSendReset()">Enviar liga</button>
+      <button class="lg-forgot" onclick="lgForgot(false)">&larr; Volver</button>
+      <div id="lg-fp-msg" class="login-err"></div>
+    </div>
     <div class="login-credit"><span>Powered by</span><img id="lg-iapp" class="iapp-logo" alt="IAppCon"><span>&copy;</span></div>
   </div>
 </div>
+<div id="pw-ov" class="login-ov hidden" style="z-index:140"><div class="login-card">
+  <div class="login-title" id="pw-title">Crea tu contrase&ntilde;a</div>
+  <div class="login-sub" id="pw-sub">Por seguridad, elige una contrase&ntilde;a nueva para tu cuenta.</div>
+  <input id="pw-1" type="password" placeholder="Nueva contrase&ntilde;a (m&iacute;nimo 8)" autocomplete="new-password">
+  <input id="pw-2" type="password" placeholder="Rep&iacute;tela" autocomplete="new-password" onkeydown="if(event.key==='Enter')pwSave()">
+  <button class="login-btn" onclick="pwSave()">Guardar contrase&ntilde;a</button>
+  <div id="pw-err" class="login-err"></div>
+</div></div>
 <datalist id="dl-cli"></datalist>
 <datalist id="dl-prod"></datalist>
 <datalist id="dl-per"></datalist>
@@ -619,7 +642,67 @@ function doLogin(){
   }).catch(function(e){btn.disabled=false;document.getElementById('lg-err').textContent='Error: '+((e&&e.message)?e.message:e);});
 }
 function lgKey(ev){if(ev&&ev.key==='Enter')doLogin();}
-function showApp(){document.getElementById('login').classList.add('hidden');loadCuenta().then(function(){run('getAll',[],null);});}
+function showApp(){document.getElementById('login').classList.add('hidden');loadCuenta().then(function(){if(MY_ROL==='inactivo'){alert('Tu usuario esta desactivado. Pide acceso al administrador.');doLogout();return;}if(MY_MUST)pwOpen('first');run('getAll',[],null);});}
+/* ---------- contrasenas ---------- */
+var MY_ROL='admin', MY_NOMBRE='', MY_MUST=false, PW_MODE='';
+try{sb.auth.onAuthStateChange(function(ev){if(ev==='PASSWORD_RECOVERY'){document.getElementById('login').classList.add('hidden');pwOpen('recovery');}});}catch(e){}
+function lgForgot(on){document.getElementById('lg-fp').classList.toggle('hidden',!on);var em=document.getElementById('lg-email').value;if(on&&em)document.getElementById('lg-fp-email').value=em;document.getElementById('lg-fp-msg').textContent='';}
+function lgSendReset(){var em=document.getElementById('lg-fp-email').value.trim();var msg=document.getElementById('lg-fp-msg');if(!em){msg.textContent='Escribe tu correo.';return;}
+  msg.style.color='var(--inkSoft)';msg.textContent='Enviando...';
+  sb.auth.resetPasswordForEmail(em,{redirectTo:location.origin+location.pathname}).then(function(r){if(r.error){msg.style.color='';msg.textContent='No se pudo enviar: '+r.error.message;return;}msg.style.color='#0B5E45';msg.textContent='Listo. Revisa tu correo (y la carpeta de spam) y abre la liga desde este mismo dispositivo.';});}
+function pwOpen(mode){PW_MODE=mode;var t={first:['Crea tu contrasena','Entraste con una contrasena temporal. Elige una nueva para continuar.'],recovery:['Nueva contrasena','Escribe tu nueva contrasena.'],change:['Cambiar contrasena','Escribe tu contrasena actual y la nueva.']}[mode];
+  document.getElementById('pw-title').textContent=t[0];document.getElementById('pw-sub').textContent=t[1];
+  var card=document.querySelector('#pw-ov .login-card');var cur=document.getElementById('pw-0');
+  if(mode==='change'&&!cur){cur=document.createElement('input');cur.id='pw-0';cur.type='password';cur.placeholder='Contrasena actual';cur.autocomplete='current-password';card.insertBefore(cur,document.getElementById('pw-1'));}
+  if(mode!=='change'&&cur)cur.remove();
+  var x=document.getElementById('pw-x');if(mode==='change'&&!x){x=document.createElement('button');x.id='pw-x';x.className='lg-forgot';x.textContent='Cancelar';x.onclick=function(){document.getElementById('pw-ov').classList.add('hidden');};card.appendChild(x);}if(mode!=='change'&&x)x.remove();
+  ['pw-0','pw-1','pw-2'].forEach(function(i){var e=document.getElementById(i);if(e)e.value='';});document.getElementById('pw-err').textContent='';
+  document.getElementById('pw-ov').classList.remove('hidden');}
+function pwSave(){
+  var a=document.getElementById('pw-1').value,b=document.getElementById('pw-2').value,err=document.getElementById('pw-err');err.textContent='';
+  if(a.length<8){err.textContent='Debe tener al menos 8 caracteres.';return;}if(a!==b){err.textContent='No coinciden.';return;}
+  var pre=Promise.resolve();
+  if(PW_MODE==='change'){var cur=document.getElementById('pw-0').value;if(!cur){err.textContent='Escribe tu contrasena actual.';return;}
+    pre=sb.auth.signInWithPassword({email:USER_EMAIL,password:cur}).then(function(r){if(r.error)throw new Error('La contrasena actual no es correcta.');});}
+  pre.then(function(){return sb.auth.updateUser({password:a,data:{must_change:false}});}).then(function(r){if(r&&r.error)throw r.error;
+    document.getElementById('pw-ov').classList.add('hidden');MY_MUST=false;
+    if(PW_MODE==='recovery'){try{history.replaceState(null,'',location.pathname);}catch(e){}showApp();}
+    tkToast('Contrasena actualizada.');
+  }).catch(function(e){err.textContent=(e&&e.message)?e.message:String(e);});
+}
+/* ---------- usuarios (solo admin) ---------- */
+var US_LIST=null;
+function usCall(body){return sb.functions.invoke('usuarios',{body:body}).then(function(r){var d=r.data;if(r.error&&!d){var m=r.error.message||'Error';if(/not found|404/i.test(m))m='Falta publicar la funcion "usuarios" en Supabase.';throw new Error(m);}if(!d||!d.ok)throw new Error((d&&d.error)||'Error');return d;});}
+function usLoad(){US_LIST=null;usCall({accion:'listar'}).then(function(d){US_LIST=d.usuarios||[];if(VIEW==='usuarios')render();}).catch(function(e){US_LIST={error:e.message};if(VIEW==='usuarios')render();});}
+function renderUsuarios(){
+  if(MY_ROL!=='admin')return emptyBox('Solo administradores','Pide a un administrador que te de acceso.');
+  if(US_LIST===null){setTimeout(usLoad,0);return '<div class="db-empty">Cargando usuarios...</div>';}
+  if(US_LIST.error)return '<div class="tk-warn">'+esc(US_LIST.error)+'</div><button class="pill pillO" onclick="usLoad()">Reintentar</button>';
+  var act=US_LIST.filter(function(u){return u.activo;}),adm=act.filter(function(u){return u.rol==='admin';});
+  var h=uiKpis([['Usuarios activos',String(act.length),'db-dark'],['Administradores',String(adm.length),'db-mint'],['Operadores',String(act.length-adm.length),''],['Desactivados',String(US_LIST.length-act.length),'db-pink']]);
+  h+='<div class="tk-tabs"><span class="db-note">Administrador: todo, incluyendo usuarios. Operador: toda la operacion, sin manejar usuarios.</span><span style="flex:1"></span><button class="pill pillR bk-xl" onclick="usNew()">+ Nuevo usuario</button></div>';
+  h+='<div class="rp-tblw"><table class="p3-tbl rp-tbl"><thead><tr><th>Usuario</th><th>Rol</th><th>Ultimo acceso</th><th>Estado</th><th></th></tr></thead><tbody>'+US_LIST.map(function(u){
+    return '<tr style="'+(u.activo?'':'opacity:.55')+'"><td><b>'+esc(u.nombre||'(sin nombre)')+(u.yo?' <span class="tk-chip" style="background:#EEF1F0;color:#3F4A46">tu</span>':'')+'</b><div class="db-note">'+esc(u.email)+'</div></td>'+
+      '<td><select class="bk-sel" '+(u.yo?'disabled':'')+' onchange="usRol(\''+u.user_id+'\',this.value)"><option value="admin"'+(u.rol==='admin'?' selected':'')+'>Administrador</option><option value="operador"'+(u.rol!=='admin'?' selected':'')+'>Operador</option></select></td>'+
+      '<td>'+(u.ultimo_acceso?tkFmtDT(u.ultimo_acceso):'Nunca')+(u.debe_cambiar?'<div class="db-note">Con contrasena temporal</div>':'')+'</td>'+
+      '<td>'+(u.activo?tkChip('Activo','#E6F7F0','#0B5E45'):tkChip('Desactivado','#EEF1F0','#3F4A46'))+'</td>'+
+      '<td style="text-align:right;white-space:nowrap">'+(u.activo?'<button class="pill pillO pk-b" onclick="usReset(\''+u.user_id+'\')">Restablecer contrasena</button> ':'')+(u.yo?'':'<button class="pill pk-b '+(u.activo?'pd-del':'pillO')+'" onclick="usActivo(\''+u.user_id+'\','+(!u.activo)+')">'+(u.activo?'Desactivar':'Activar')+'</button>')+'</td></tr>';}).join('')+'</tbody></table></div>';
+  return h;
+}
+function usNew(){openModal('Nuevo usuario','<div class="fld"><label class="lbl">Nombre</label><input id="us-n" placeholder="Ej. Janette"></div><div class="fld"><label class="lbl">Correo</label><input id="us-e" type="email" placeholder="correo@ejemplo.com"></div><div class="fld"><label class="lbl">Rol</label><select id="us-r"><option value="operador">Operador</option><option value="admin">Administrador</option></select></div><div class="db-note" style="margin-bottom:12px">Se crea con una contrasena temporal que te muestro al guardar. La primera vez que entre, la app le pedira crear la suya.</div><button class="btn btnR" onclick="usCreate()">Crear usuario</button><div id="us-err" class="login-err"></div>');}
+function usCreate(){var n=val('us-n').trim(),e=val('us-e').trim(),r=val('us-r');if(!e){document.getElementById('us-err').textContent='Escribe el correo.';return;}
+  showLoading();usCall({accion:'crear',nombre:n,email:e,rol:r}).then(function(d){hideLoading();usShowPass(n||e,d.email,d.password,d.existente);usLoad();}).catch(function(x){hideLoading();document.getElementById('us-err').textContent=x.message;});}
+function usShowPass(nombre,email,pass,existente){
+  if(existente||!pass){openModal('Usuario agregado','<div style="font-size:14px;line-height:1.5">'+esc(email)+' ya tenia cuenta, asi que entra con su contrasena de siempre. Ya tiene acceso a '+esc(CUENTA.nombre)+'.</div><button class="btn btnR" style="margin-top:14px" onclick="closeModal()">Listo</button>');return;}
+  var link=location.origin+location.pathname;
+  var msg='Hola '+String(nombre).split(' ')[0]+'! Ya tienes acceso a '+CUENTA.nombre+' Operaciones.\n\nEntra en: '+link+'\nCorreo: '+email+'\nContrasena temporal: '+pass+'\n\nAl entrar te pedira crear tu propia contrasena.';
+  window._usMsg=msg;
+  openModal('Comparte el acceso','<div class="us-cred"><div><span>Correo</span><b>'+esc(email)+'</b></div><div><span>Contrasena temporal</span><b class="us-pass">'+esc(pass)+'</b></div></div><div class="db-note" style="margin:10px 0 14px">Esta contrasena solo se muestra ahora. Al entrar, la app le pedira crear la suya.</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill pillO" style="flex:1" onclick="navigator.clipboard.writeText(window._usMsg).then(function(){tkToast(\'Copiado\');})">Copiar mensaje</button><a class="pill pillR" style="flex:1;display:flex;align-items:center;justify-content:center;text-decoration:none" target="_blank" href="https://wa.me/?text='+encodeURIComponent(msg)+'">Enviar por WhatsApp</a></div>');
+}
+function usReset(uid){if(!confirm('Generar una contrasena temporal nueva para este usuario? La anterior dejara de funcionar.'))return;var u=(US_LIST||[]).filter(function(x){return x.user_id===uid;})[0]||{};
+  showLoading();usCall({accion:'restablecer',user_id:uid}).then(function(d){hideLoading();usShowPass(u.nombre||d.email,d.email,d.password,false);usLoad();}).catch(function(e){hideLoading();alert(e.message);});}
+function usRol(uid,rol){showLoading();usCall({accion:'rol',user_id:uid,rol:rol}).then(function(){hideLoading();usLoad();}).catch(function(e){hideLoading();alert(e.message);usLoad();});}
+function usActivo(uid,on){if(!on&&!confirm('Desactivar este usuario? Ya no podra entrar ni ver datos.'))return;showLoading();usCall({accion:'activo',user_id:uid,activo:on}).then(function(){hideLoading();usLoad();}).catch(function(e){hideLoading();alert(e.message);});}
 function doLogout(){sb.auth.signOut().then(function(){location.reload();});}
 
 function periodos(){var s={},out=[];STATE.pedidos.forEach(function(p){if(p.periodo&&!s[p.periodo]){s[p.periodo]=1;out.push(p.periodo);}});return out;}
@@ -650,6 +733,7 @@ function render(){
   h+='<div style="padding:0 0 60px">';
   if(!READY){h+='<div style="text-align:center;color:var(--inkSoft);padding:40px">Cargando datos de la hoja…</div>';}
   else if(VIEW==='hoy'){h+=renderHoy();}
+  else if(VIEW==='usuarios'){h+=renderUsuarios();}
   else if(VIEW==='pedidos'){h+=renderPedidos(vis);}
   else if(VIEW==='clientes'){h+=renderReport(report);}
   else if(VIEW==='ventas'){h+=renderVentas();}
@@ -669,12 +753,13 @@ function render(){
   if(VIEW==='reportes')tkAfterRender();
 }
 function tab(id,label){var on=VIEW===id;return '<button onclick="setView(\''+id+'\')" class="navbtn'+(on?' navbtn-on':'')+'">'+label+'</button>';}
-function setView(v){VIEW=v;SIDE_OPEN=false;render();try{window.scrollTo(0,0);}catch(e){}}
+function setView(v){if(v==='usuarios'&&VIEW!=='usuarios')US_LIST=null;VIEW=v;SIDE_OPEN=false;render();try{window.scrollTo(0,0);}catch(e){}}
 /* ---------- estructura: menu lateral, cuenta (SaaS) ---------- */
 var SIDE_OPEN=false, USER_EMAIL='';
 var CUENTA={nombre:'Shop & Go',logo:null,primario:'#5FD3B0',acento:'#E5127D',config:{}};
-var VIEW_TITLES={hoy:'Hoy',dashboards:'Dashboards',analisis:'Reportes',prod360:'Productos 360',pedidos:'Pedidos',clientes:'Cobranza',banco:'Banco',packing:'Packing',reportes:'Tickets y cobro',pendientes:'Pendientes',agenda:'Agenda',ventas:'Ventas',costos:'Costos',gastos:'Gastos'};
+var VIEW_TITLES={usuarios:'Usuarios',hoy:'Hoy',dashboards:'Dashboards',analisis:'Reportes',prod360:'Productos 360',pedidos:'Pedidos',clientes:'Cobranza',banco:'Banco',packing:'Packing',reportes:'Tickets y cobro',pendientes:'Pendientes',agenda:'Agenda',ventas:'Ventas',costos:'Costos',gastos:'Gastos'};
 var NAV_ICON={
+  usuarios:'M16 19v-1a4 4 0 0 0-8 0v1M12 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19 8v6M22 11h-6',
   hoy:'M12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M3 12h2M19 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
   dashboards:'M3 3h8v8H3zM13 3h8v5h-8zM13 10h8v11h-8zM3 13h8v8H3z',
   analisis:'M4 20V10M10 20V4M16 20v-7M22 20H2',
@@ -694,13 +779,14 @@ var NAV_GROUPS=[
   ['Operacion',[['hoy','Hoy'],['pedidos','Pedidos'],['clientes','Cobranza','cli'],['banco','Banco','trans'],['packing','Packing','pk'],['reportes','Tickets y cobro','tk'],['pendientes','Pendientes'],['agenda','Agenda']]],
   ['Consultas',[['prod360','Productos 360']]],
   ['Finanzas',[['costos','Costos'],['gastos','Gastos']]],
-  ['Analisis',[['dashboards','Dashboards']]]
+  ['Analisis',[['dashboards','Dashboards']]],
+  ['Configuracion',[['usuarios','Usuarios']]]
 ];
 function cuentaLogo(){return CUENTA.logo||LOGO;}
 function svgIcon(d){return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="'+d+'"></path></svg>';}
 function renderSide(b){
   var h='<div class="sbrand"><img class="slogo" src="'+cuentaLogo()+'" alt=""><div><div class="sname">'+esc(CUENTA.nombre)+'</div><div class="ssub">Operaciones</div></div></div>';
-  NAV_GROUPS.forEach(function(g){
+  NAV_GROUPS.forEach(function(g){if(g[0]==='Configuracion'&&MY_ROL!=='admin')return;
     h+='<div class="sgrp"><div class="sglbl">'+g[0]+'</div>';
     g[1].forEach(function(it){
       var n=it[2]==='cli'?b.cliSaldo:(it[2]==='trans'?b.nTrans:(it[2]==='tk'?tkSinEnviar():(it[2]==='pk'?pkPorEmpacar():0)));
@@ -709,7 +795,7 @@ function renderSide(b){
     h+='</div>';
   });
   h+='<div class="sper"><span>Periodo activo</span><b>'+esc(defaultPeriodo()||'-')+'</b></div>';
-  h+='<div class="sfoot"><div class="suser">'+esc(USER_EMAIL)+'</div><button class="sout" onclick="doLogout()">Cerrar sesion</button>';
+  h+='<div class="sfoot"><div class="suser">'+esc(MY_NOMBRE||USER_EMAIL)+(MY_NOMBRE?'<span>'+esc(USER_EMAIL)+'</span>':'')+'</div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="sout" onclick="pwOpen(\'change\')">Cambiar contrasena</button><button class="sout" onclick="doLogout()">Cerrar sesion</button></div>';
   h+='<div class="scredit"><span>Powered by</span><img class="iapp-logo" src="'+IAPPLOGO+'" alt="IAppCon"><span>&copy;</span></div></div>';
   var side=document.getElementById('side');side.innerHTML=h;side.classList.toggle('open',SIDE_OPEN);
   document.getElementById('sidebg').classList.toggle('open',SIDE_OPEN);
@@ -726,7 +812,8 @@ function applyTheme(){
   document.title=(CUENTA.nombre||'Operaciones')+' · Operaciones';
 }
 function loadCuenta(){
-  var pU=sb.auth.getUser().then(function(r){USER_EMAIL=(r&&r.data&&r.data.user&&r.data.user.email)||'';}).catch(function(){});
+  var pU=sb.auth.getUser().then(function(r){var u=r&&r.data&&r.data.user;USER_EMAIL=(u&&u.email)||'';MY_MUST=!!(u&&u.user_metadata&&u.user_metadata.must_change);
+    if(!u)return;return sb.from('miembros').select('rol,nombre,activo').eq('user_id',u.id).then(function(m){var row=(m&&m.data||[]).filter(function(x){return x.activo!==false;})[0];if(row){MY_ROL=row.rol||'operador';MY_NOMBRE=row.nombre||'';}else if(m&&!m.error&&m.data&&m.data.length){MY_ROL='inactivo';}});}).catch(function(){});
   var pC=sb.from('cuentas').select('*').limit(1).then(function(r){
     if(!r.error&&r.data&&r.data.length){var c=r.data[0];CUENTA={id:c.id,nombre:c.nombre||'Operaciones',logo:c.logo_url||null,primario:c.color_primario||'#5FD3B0',acento:c.color_acento||'#E5127D',config:c.config||{}};}
   }).catch(function(){});
