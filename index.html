@@ -1092,11 +1092,12 @@ function emptyBox(t,s){return '<div style="text-align:center;padding:48px 0"><di
 /* ---------- modals ---------- */
 function openModal(title,body){
   document.getElementById('modal-root').innerHTML=
-    '<div class="modalbg" onclick="if(event.target===this)closeModal()"><div class="modal">'+
-    '<div class="modalhd" style="justify-content:space-between"><h2 style="margin:0;font-size:18px;font-weight:800">'+title+'</h2><button onclick="closeModal()" style="background:none;color:var(--inkSoft);font-size:22px">&times;</button></div>'+
+    '<div class="modalbg" onpointerdown="this._bgDown=(event.target===this)" onclick="if(event.target===this&&this._bgDown)askCloseModal();this._bgDown=false" oninput="this._dirty=true" onchange="this._dirty=true"><div class="modal">'+
+    '<div class="modalhd" style="justify-content:space-between"><h2 style="margin:0;font-size:18px;font-weight:800">'+title+'</h2><button onclick="askCloseModal()" style="background:none;color:var(--inkSoft);font-size:22px">&times;</button></div>'+
     '<div style="padding:0 20px 24px">'+body+'</div></div></div>';
 }
 function closeModal(){document.getElementById('modal-root').innerHTML='';}
+function askCloseModal(){var bg=document.querySelector('#modal-root .modalbg');if(bg&&bg._dirty&&!confirm('Tienes datos capturados sin guardar. ¿Quieres descartarlos?'))return;closeModal();}
 
 /* --- nuevo pedido --- */
 function openNuevoPedido(){
