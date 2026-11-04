@@ -707,7 +707,7 @@ function bootAuth(){var _s=document.getElementById('lg-logo');if(_s)_s.src=LOGO;
 
 function loadMarcaPublica(){
   try{sb.rpc('cuenta_publica',{p_slug:SLUG}).then(function(r){var c=r&&r.data&&r.data[0];if(!c)return;
-    CUENTA.nombre=c.nombre||CUENTA.nombre;CUENTA.logo=c.logo_url||null;CUENTA.primario=c.color_primario||CUENTA.primario;CUENTA.acento=c.color_acento||CUENTA.acento;CUENTA.activo=c.activo;
+    CUENTA.nombre=c.nombre||CUENTA.nombre;CUENTA.logo=c.logo_url||null;CUENTA.primario=c.color_primario||CUENTA.primario;CUENTA.acento=c.color_acento||CUENTA.acento;if(c.color_texto)CUENTA.texto=c.color_texto;CUENTA.activo=c.activo;
     applyTheme();var l=document.getElementById('lg-logo');if(l)l.src=cuentaLogo();var t=document.querySelector('#login .login-title');if(t)t.textContent=CUENTA.nombre;
     if(c.activo===false){var e=document.getElementById('lg-err');if(e)e.textContent='Esta cuenta esta suspendida. Contacta a IAppCon.';var bt=document.getElementById('lg-btn');if(bt)bt.disabled=true;}
   });}catch(e){}
@@ -891,10 +891,14 @@ function renderSide(b){
     +'<button class="tadd" onclick="openNuevoPedido()" aria-label="Nuevo pedido">+</button>';
 }
 function toggleSide(v){SIDE_OPEN=(v===undefined)?!SIDE_OPEN:!!v;document.getElementById('side').classList.toggle('open',SIDE_OPEN);document.getElementById('sidebg').classList.toggle('open',SIDE_OPEN);}
+function thTexto(c){c=String(c||'').trim();if(!/^#[0-9a-fA-F]{6}$/.test(c))return '';var n=parseInt(c.slice(1),16),R=(n>>16)/255,G=((n>>8)&255)/255,B=(n&255)/255;var L=0.2126*R+0.7152*G+0.0722*B;return L>0.45?'':c;}
 function applyTheme(){
   var r=document.documentElement.style;
   r.setProperty('--mint',CUENTA.primario||'#5FD3B0');
   r.setProperty('--rosa',CUENTA.acento||'#E5127D');
+  var tx=thTexto(CUENTA.texto),st=document.getElementById('th-texto');
+  if(!st){st=document.createElement('style');st.id='th-texto';document.head.appendChild(st);}
+  st.textContent=tx?(':root{--ink:'+tx+';--inkSoft:color-mix(in srgb,'+tx+' 68%,#ffffff);--rosaDark:'+tx+'}h1,h2,h3,.p3-sub{color:var(--ink)}'):'';
   var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',CUENTA.primario||'#5FD3B0');
   document.title=(CUENTA.nombre||'Operaciones')+' · Operaciones';
   thApply();
@@ -903,7 +907,7 @@ function loadCuenta(){
   var pU=sb.auth.getUser().then(function(r){var u=r&&r.data&&r.data.user;USER_EMAIL=(u&&u.email)||'';MY_MUST=!!(u&&u.user_metadata&&u.user_metadata.must_change);
     if(!u)return;return sb.from('miembros').select('rol,nombre,activo').eq('user_id',u.id).then(function(m){var row=(m&&m.data||[]).filter(function(x){return x.activo!==false;})[0];if(row){MY_ROL=row.rol||'operador';MY_NOMBRE=row.nombre||'';}else if(m&&!m.error&&m.data&&m.data.length){MY_ROL='inactivo';}});}).catch(function(){});
   var pC=sb.from('cuentas').select('*').then(function(r){
-    if(!r.error&&r.data&&r.data.length){var c=r.data.filter(function(x){return x.slug===SLUG;})[0];if(!c){NO_CUENTA=true;c=r.data[0];}CUENTA={id:c.id,slug:c.slug,nombre:c.nombre||'Operaciones',logo:c.logo_url||null,primario:c.color_primario||'#5FD3B0',acento:c.color_acento||'#E5127D',config:c.config||{}};}
+    if(!r.error&&r.data&&r.data.length){var c=r.data.filter(function(x){return x.slug===SLUG;})[0];if(!c){NO_CUENTA=true;c=r.data[0];}CUENTA={id:c.id,slug:c.slug,nombre:c.nombre||'Operaciones',logo:c.logo_url||null,primario:c.color_primario||'#5FD3B0',acento:c.color_acento||'#E5127D',texto:c.color_texto||'',config:c.config||{}};}
     else NO_CUENTA=true;
   }).catch(function(){});
   var pS=sb.from('superadmins').select('user_id').limit(1).then(function(r){IS_SUPER=!!(r&&!r.error&&r.data&&r.data.length);}).catch(function(){IS_SUPER=false;});
@@ -1092,7 +1096,7 @@ function emptyBox(t,s){return '<div style="text-align:center;padding:48px 0"><di
 /* ---------- modals ---------- */
 function openModal(title,body){
   document.getElementById('modal-root').innerHTML=
-    '<div class="modalbg" onpointerdown="this._bgDown=(event.target===this)" onclick="if(event.target===this&&this._bgDown)askCloseModal();this._bgDown=false" oninput="this._dirty=true" onchange="this._dirty=true"><div class="modal">'+
+    '<div class="modalbg" oninput="this._dirty=true" onchange="this._dirty=true"><div class="modal">'+
     '<div class="modalhd" style="justify-content:space-between"><h2 style="margin:0;font-size:18px;font-weight:800">'+title+'</h2><button onclick="askCloseModal()" style="background:none;color:var(--inkSoft);font-size:22px">&times;</button></div>'+
     '<div style="padding:0 20px 24px">'+body+'</div></div></div>';
 }
@@ -1894,7 +1898,7 @@ function plForm(id){
   var v=function(k,d){return esc(c&&c[k]!=null?c[k]:(d||''));};
   var h='<div class="row2"><div class="fld"><label class="lbl">Nombre del negocio</label><input id="pl-n" value="'+v('nombre')+'" oninput="'+(c?'':'plAutoSlug()')+';plPrev()"></div><div class="fld"><label class="lbl">Subdominio</label>'+(c?'<input disabled value="'+v('slug')+'.iappcon.com">':'<div class="pl-sub"><input id="pl-s" placeholder="minegocio" oninput="this.dataset.manual=1;plPrev()"><span>.iappcon.com</span></div>')+'</div></div>';
   h+='<div class="fld"><label class="lbl">Logo (PNG o JPG, cuadrado de preferencia)</label><div class="pl-logo"><img id="pl-li" src="'+(PL_LOGO||LOGO)+'" alt=""><input type="file" accept="image/*" onchange="plLogoFile(this)"></div></div>';
-  h+='<div class="row2"><div class="fld"><label class="lbl">Color principal (menu)</label><input id="pl-c1" type="color" value="'+v('color_primario','#5FD3B0')+'" oninput="plPrev()"></div><div class="fld"><label class="lbl">Color de acento (botones)</label><input id="pl-c2" type="color" value="'+v('color_acento','#E5127D')+'" oninput="plPrev()"></div></div>';
+  h+='<div class="row3"><div class="fld"><label class="lbl">Principal (menu)</label><input id="pl-c1" type="color" value="'+v('color_primario','#5FD3B0')+'" oninput="plPrev()"></div><div class="fld"><label class="lbl">Acento (botones)</label><input id="pl-c2" type="color" value="'+v('color_acento','#E5127D')+'" oninput="plPrev()"></div><div class="fld"><label class="lbl">Textos y titulos</label><input id="pl-c3" type="color" value="'+v('color_texto','#15201C')+'" oninput="plPrev()"></div></div>';
   h+='<div class="pl-prev" id="pl-prev"></div>';
   h+='<div class="row2"><div class="fld"><label class="lbl">Contacto</label><input id="pl-ct" value="'+v('contacto')+'"></div><div class="fld"><label class="lbl">Telefono</label><input id="pl-tel" value="'+v('telefono')+'"></div></div>';
   h+='<div class="row2"><div class="fld"><label class="lbl">Plan</label><select id="pl-plan">'+['basico','pro','premium'].map(function(p){return '<option'+((c&&c.plan||'basico')===p?' selected':'')+'>'+p+'</option>';}).join('')+'</select></div><div class="fld"><label class="lbl">Notas</label><input id="pl-no" value="'+v('notas')+'"></div></div>';
@@ -1903,14 +1907,14 @@ function plForm(id){
   openModal(c?'Editar cliente':'Nuevo cliente',h);plPrev();
 }
 function plAutoSlug(){var s=document.getElementById('pl-s');if(s&&!s.dataset.manual)s.value=plSlugify(val('pl-n'));}
-function plPrev(){var e=document.getElementById('pl-prev');if(!e)return;var c1=val('pl-c1')||'#5FD3B0',c2=val('pl-c2')||'#E5127D',n=val('pl-n')||'Mi negocio';
-  e.innerHTML='<div class="pl-pv-side" style="background:color-mix(in srgb,'+c1+' 12%,white);border-color:color-mix(in srgb,'+c1+' 35%,white)"><div class="pl-pv-br"><img src="'+(PL_LOGO||LOGO)+'"><b>'+esc(n)+'</b></div><i style="background:#111;color:#fff">Hoy</i><i>Pedidos</i><i>Cobranza</i></div><div class="pl-pv-main"><b>Vista previa</b><button style="background:'+c2+'">+ Nuevo pedido</button><span style="background:'+c1+'"></span></div>';}
+function plPrev(){var e=document.getElementById('pl-prev');if(!e)return;var c1=val('pl-c1')||'#5FD3B0',c2=val('pl-c2')||'#E5127D',c3=thTexto(val('pl-c3'))||'#15201C',n=val('pl-n')||'Mi negocio';
+  e.innerHTML='<div class="pl-pv-side" style="background:color-mix(in srgb,'+c1+' 12%,white);border-color:color-mix(in srgb,'+c1+' 35%,white)"><div class="pl-pv-br"><img src="'+(PL_LOGO||LOGO)+'"><b style="color:'+c3+'">'+esc(n)+'</b></div><i style="background:#111;color:#fff">Hoy</i><i style="color:'+c3+'">Pedidos</i><i style="color:'+c3+'">Cobranza</i></div><div class="pl-pv-main"><b style="color:'+c3+'">Vista previa</b><button style="background:'+c2+'">+ Nuevo pedido</button><span style="background:'+c1+'"></span></div>';}
 function plLogoFile(inp){var f=inp.files&&inp.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){var img=new Image();img.onload=function(){var S=256,cv=document.createElement('canvas');cv.width=S;cv.height=S;var x=cv.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,S,S);var r=Math.min(S/img.width,S/img.height),w=img.width*r,h=img.height*r;x.drawImage(img,(S-w)/2,(S-h)/2,w,h);PL_LOGO=cv.toDataURL('image/png');document.getElementById('pl-li').src=PL_LOGO;plPrev();};img.src=rd.result;};rd.readAsDataURL(f);}
 function plSave(id){
-  var b={nombre:val('pl-n').trim(),logo_url:PL_LOGO||null,color_primario:val('pl-c1'),color_acento:val('pl-c2'),contacto:val('pl-ct'),telefono:val('pl-tel'),plan:val('pl-plan'),notas:val('pl-no')};
+  var b={nombre:val('pl-n').trim(),logo_url:PL_LOGO||null,color_primario:val('pl-c1'),color_acento:val('pl-c2'),color_texto:val('pl-c3'),contacto:val('pl-ct'),telefono:val('pl-tel'),plan:val('pl-plan'),notas:val('pl-no')};
   if(id){b.accion='actualizar';b.id=id;}else{b.accion='crear';b.slug=val('pl-s').trim();b.admin_nombre=val('pl-an').trim();b.admin_email=val('pl-ae').trim();}
   showLoading();plCall(b).then(function(d){hideLoading();PL_LIST=null;
-    if(id){closeModal();if(CUENTA.id===id){CUENTA.nombre=b.nombre;CUENTA.logo=b.logo_url;CUENTA.primario=b.color_primario;CUENTA.acento=b.color_acento;applyTheme();}render();tkToast('Cliente actualizado');return;}
+    if(id){closeModal();if(CUENTA.id===id){CUENTA.nombre=b.nombre;CUENTA.logo=b.logo_url;CUENTA.primario=b.color_primario;CUENTA.acento=b.color_acento;CUENTA.texto=b.color_texto;applyTheme();}render();tkToast('Cliente actualizado');return;}
     plShowCred(b.nombre,d.slug,d.email,d.password,d.existente);render();
   }).catch(function(e){hideLoading();var x=document.getElementById('pl-err');if(x)x.textContent=e.message;else alert(e.message);});
 }
