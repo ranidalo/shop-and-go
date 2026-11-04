@@ -456,6 +456,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Shop & Go">
+<style>html.brand-wait .login-card,html.brand-wait .sbrand,html.brand-wait #topbar{visibility:hidden}</style>
+<script>(function(){try{var q=new URLSearchParams(location.search).get('c'),h=location.hostname.toLowerCase(),s=q?q.toLowerCase():(/\.iappcon\.com$/.test(h)?h.split('.')[0]:(localStorage.getItem('sg_slug')||'shopandgo'));if(s==='www')s='shopandgo';if(s!=='shopandgo')document.documentElement.classList.add('brand-wait');setTimeout(function(){document.documentElement.classList.remove('brand-wait');},3000);}catch(e){}})();</script>
 </head>
 <body>
 <div class="shell"><aside class="side" id="side"></aside><div class="sidebg" id="sidebg" onclick="toggleSide(false)"></div><div class="main"><div class="topbar" id="topbar"></div><div class="wrap" id="app"></div></div></div>
@@ -703,12 +705,12 @@ function loadAllCore(){
 }
 
 /* ---- login / sesion ---- */
-function bootAuth(){var _s=document.getElementById('lg-logo');if(_s)_s.src=LOGO;loadMarcaPublica();['lg-iapp','credit-iapp'].forEach(function(id){var e=document.getElementById(id);if(e)e.src=IAPPLOGO;});sb.auth.getSession().then(function(s){if(s&&s.data&&s.data.session){showApp();}else{showLogin();}}).catch(function(){showLogin();});}
+function bootAuth(){brandLogin();if(SLUG==='shopandgo')brandReady();loadMarcaPublica();['lg-iapp','credit-iapp'].forEach(function(id){var e=document.getElementById(id);if(e)e.src=IAPPLOGO;});sb.auth.getSession().then(function(s){if(s&&s.data&&s.data.session){showApp();}else{showLogin();}}).catch(function(){showLogin();});}
 
 function loadMarcaPublica(){
-  try{sb.rpc('cuenta_publica',{p_slug:SLUG}).then(function(r){var c=r&&r.data&&r.data[0];if(!c)return;
+  try{sb.rpc('cuenta_publica',{p_slug:SLUG}).then(function(r){var c=r&&r.data&&r.data[0];if(!c){brandReady();return;}
     CUENTA.nombre=c.nombre||CUENTA.nombre;CUENTA.logo=c.logo_url||null;CUENTA.primario=c.color_primario||CUENTA.primario;CUENTA.acento=c.color_acento||CUENTA.acento;if(c.color_texto)CUENTA.texto=c.color_texto;CUENTA.activo=c.activo;
-    applyTheme();var l=document.getElementById('lg-logo');if(l)l.src=cuentaLogo();var t=document.querySelector('#login .login-title');if(t)t.textContent=CUENTA.nombre;
+    applyTheme();brandSave();brandLogin();brandReady();var l=document.getElementById('lg-logo');if(l)l.src=cuentaLogo();var t=document.querySelector('#login .login-title');if(t)t.textContent=CUENTA.nombre;
     if(c.activo===false){var e=document.getElementById('lg-err');if(e)e.textContent='Esta cuenta esta suspendida. Contacta a IAppCon.';var bt=document.getElementById('lg-btn');if(bt)bt.disabled=true;}
   });}catch(e){}
 }
@@ -724,7 +726,7 @@ function doLogin(){
   }).catch(function(e){btn.disabled=false;document.getElementById('lg-err').textContent='Error: '+((e&&e.message)?e.message:e);});
 }
 function lgKey(ev){if(ev&&ev.key==='Enter')doLogin();}
-function showApp(){document.getElementById('login').classList.add('hidden');loadCuenta().then(function(){if(MY_ROL==='inactivo'){alert('Tu usuario esta desactivado. Pide acceso al administrador.');doLogout();return;}if(NO_CUENTA&&!IS_SUPER){alert('Tu usuario no tiene acceso a esta cuenta ('+SLUG+').');doLogout();return;}if(MY_MUST)pwOpen('first');run('getAll',[],null);});}
+function showApp(){document.getElementById('login').classList.add('hidden');loadCuenta().then(function(){if(MY_ROL==='inactivo'){alert('Tu usuario esta desactivado. Pide acceso al administrador.');doLogout();return;}if(NO_CUENTA){alert(IS_SUPER?('Tu usuario no pertenece a '+(CUENTA.nombre||SLUG)+'. Este cliente se administra desde Plataforma en shopandgo.iappcon.com.'):('Tu usuario no tiene acceso a esta cuenta ('+SLUG+').'));doLogout();return;}if(MY_MUST)pwOpen('first');run('getAll',[],null);});}
 /* ---------- contrasenas ---------- */
 var MY_ROL='admin', MY_NOMBRE='', MY_MUST=false, PW_MODE='';
 try{sb.auth.onAuthStateChange(function(ev){if(ev==='PASSWORD_RECOVERY'){document.getElementById('login').classList.add('hidden');pwOpen('recovery');}});}catch(e){}
@@ -840,8 +842,12 @@ function tab(id,label){var on=VIEW===id;return '<button onclick="setView(\''+id+
 function setView(v){if(v==='usuarios'&&VIEW!=='usuarios')US_LIST=null;if(v==='plataforma'&&VIEW!=='plataforma')PL_LIST=null;VIEW=v;SIDE_OPEN=false;render();try{window.scrollTo(0,0);}catch(e){}}
 /* ---------- estructura: menu lateral, cuenta (SaaS) ---------- */
 var SIDE_OPEN=false, USER_EMAIL='';
-var NO_CUENTA=false, IS_SUPER=false;
-var CUENTA={nombre:'Shop & Go',logo:null,primario:'#5FD3B0',acento:'#E5127D',config:{}};
+var NO_CUENTA=false, IS_SUPER=false, MY_MEMB=[];
+var CUENTA=(function(){var d={nombre:SLUG==='shopandgo'?'Shop & Go':'',logo:null,primario:'#5FD3B0',acento:'#E5127D',config:{}};try{var m=JSON.parse(localStorage.getItem('sg_marca_'+SLUG)||'null');if(m&&m.nombre){d.nombre=m.nombre;d.logo=m.logo||null;d.primario=m.primario||d.primario;d.acento=m.acento||d.acento;d.texto=m.texto||'';d._cache=true;}}catch(e){}return d;})();
+function brandSave(){try{localStorage.setItem('sg_marca_'+SLUG,JSON.stringify({nombre:CUENTA.nombre,logo:CUENTA.logo,primario:CUENTA.primario,acento:CUENTA.acento,texto:CUENTA.texto||''}));}catch(e){}}
+function brandReady(){document.documentElement.classList.remove('brand-wait');}
+function brandLogin(){var l=document.getElementById('lg-logo');if(l){var src=cuentaLogo();if(src)l.src=src;}var t=document.querySelector('#login .login-title');if(t&&CUENTA.nombre)t.textContent=CUENTA.nombre;}
+if(CUENTA._cache){try{applyTheme();}catch(e){}setTimeout(function(){brandLogin();brandReady();},0);}
 var VIEW_TITLES={plataforma:'Plataforma IAppCon',usuarios:'Usuarios',hoy:'Hoy',dashboards:'Dashboards',analisis:'Reportes',prod360:'Productos 360',pedidos:'Pedidos',clientes:'Cobranza',banco:'Banco',packing:'Packing',reportes:'Tickets y cobro',pendientes:'Pendientes',agenda:'Agenda',ventas:'Ventas',costos:'Costos',gastos:'Gastos'};
 var NAV_ICON={
   plataforma:'M12 2l9 5v10l-9 5-9-5V7zM12 22V12M21 7l-9 5-9-5',
@@ -869,7 +875,7 @@ var NAV_GROUPS=[
   ['Configuracion',[['usuarios','Usuarios']]],
   ['IAppCon',[['plataforma','Plataforma']]]
 ];
-function cuentaLogo(){return CUENTA.logo||LOGO;}
+function cuentaLogo(){return CUENTA.logo||(SLUG==='shopandgo'?LOGO:'');}
 function svgIcon(d){return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="'+d+'"></path></svg>';}
 function renderSide(b){
   var h='<div class="sbrand"><img class="slogo" src="'+cuentaLogo()+'" alt=""><div><div class="sname">'+esc(CUENTA.nombre)+'</div><div class="ssub">Operaciones</div></div></div>';
@@ -898,20 +904,26 @@ function applyTheme(){
   r.setProperty('--rosa',CUENTA.acento||'#E5127D');
   var tx=thTexto(CUENTA.texto),st=document.getElementById('th-texto');
   if(!st){st=document.createElement('style');st.id='th-texto';document.head.appendChild(st);}
-  st.textContent=tx?(':root{--ink:'+tx+';--inkSoft:color-mix(in srgb,'+tx+' 68%,#ffffff);--rosaDark:'+tx+'}h1,h2,h3,.p3-sub{color:var(--ink)}'):'';
+  st.textContent=tx?(':root{--ink:'+tx+';--inkSoft:color-mix(in srgb,'+tx+' 68%,#ffffff);--rosaDark:'+tx+'}'):'';
   var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',CUENTA.primario||'#5FD3B0');
   document.title=(CUENTA.nombre||'Operaciones')+' · Operaciones';
   thApply();
 }
 function loadCuenta(){
   var pU=sb.auth.getUser().then(function(r){var u=r&&r.data&&r.data.user;USER_EMAIL=(u&&u.email)||'';MY_MUST=!!(u&&u.user_metadata&&u.user_metadata.must_change);
-    if(!u)return;return sb.from('miembros').select('rol,nombre,activo').eq('user_id',u.id).then(function(m){var row=(m&&m.data||[]).filter(function(x){return x.activo!==false;})[0];if(row){MY_ROL=row.rol||'operador';MY_NOMBRE=row.nombre||'';}else if(m&&!m.error&&m.data&&m.data.length){MY_ROL='inactivo';}});}).catch(function(){});
+    if(!u)return;return sb.from('miembros').select('rol,nombre,activo,cuenta_id').eq('user_id',u.id).then(function(m){MY_MEMB=(m&&!m.error&&m.data)?m.data:null;});}).catch(function(){});
   var pC=sb.from('cuentas').select('*').then(function(r){
-    if(!r.error&&r.data&&r.data.length){var c=r.data.filter(function(x){return x.slug===SLUG;})[0];if(!c){NO_CUENTA=true;c=r.data[0];}CUENTA={id:c.id,slug:c.slug,nombre:c.nombre||'Operaciones',logo:c.logo_url||null,primario:c.color_primario||'#5FD3B0',acento:c.color_acento||'#E5127D',texto:c.color_texto||'',config:c.config||{}};}
+    if(!r.error&&r.data&&r.data.length){var c=r.data.filter(function(x){return x.slug===SLUG;})[0];if(!c){NO_CUENTA=true;return;}CUENTA={id:c.id,slug:c.slug,nombre:c.nombre||'Operaciones',logo:c.logo_url||null,primario:c.color_primario||'#5FD3B0',acento:c.color_acento||'#E5127D',texto:c.color_texto||'',config:c.config||{}};}
     else NO_CUENTA=true;
   }).catch(function(){});
   var pS=sb.from('superadmins').select('user_id').limit(1).then(function(r){IS_SUPER=!!(r&&!r.error&&r.data&&r.data.length);}).catch(function(){IS_SUPER=false;});
-  return Promise.all([pU,pC,pS]).then(applyTheme);
+  return Promise.all([pU,pC,pS]).then(function(){
+    if(MY_MEMB===null){if(!NO_CUENTA){applyTheme();brandSave();}brandReady();return;}
+    var mine=(MY_MEMB||[]).filter(function(x){return CUENTA.id&&x.cuenta_id===CUENTA.id;});
+    var row=mine.filter(function(x){return x.activo!==false;})[0];
+    if(row){MY_ROL=row.rol||'operador';MY_NOMBRE=row.nombre||'';}else if(mine.length){MY_ROL='inactivo';}else{NO_CUENTA=true;}
+    if(!NO_CUENTA){applyTheme();brandSave();}brandReady();
+  });
 }
 function toggleExp(id){EXPANDED=EXPANDED===id?null:id;render();}
 function toggleCli(n){EXPCLI=EXPCLI===n?null:n;render();}
