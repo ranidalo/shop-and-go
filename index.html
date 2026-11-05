@@ -60,6 +60,7 @@
   .rc-foot{color:#5F5F5F;font-size:14.5px;text-align:center;line-height:1.34;margin:14px 4px 10px}
   .rc-foot u{text-decoration:underline}
   .tel-ed{background:none;border:none;color:var(--rosaDark);font-weight:700;font-size:12.5px;padding:0 2px;cursor:pointer;white-space:nowrap}.tel-ed:hover{text-decoration:underline}
+  .tk-wamode{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}.tk-wamode select{flex:0 1 300px}
   .tk-fontrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.tk-fontrow select{flex:1 1 220px}.tk-fontnote{font-size:12.5px;color:var(--inkSoft);margin-top:4px}
   .rc-bank{text-align:center;color:#2E59A8;line-height:1.3}
   .rc-bank .rc-bt{font-weight:bold;font-size:17px;text-decoration:underline}
@@ -790,7 +791,7 @@ function usShowPass(nombre,email,pass,existente){
   var link=location.origin+location.pathname;
   var msg='Hola '+String(nombre).split(' ')[0]+'! Ya tienes acceso a '+CUENTA.nombre+' Operaciones.\n\nEntra en: '+link+'\nCorreo: '+email+'\nContrasena temporal: '+pass+'\n\nAl entrar te pedira crear tu propia contrasena.';
   window._usMsg=msg;
-  openModal('Comparte el acceso','<div class="us-cred"><div><span>Correo</span><b>'+esc(email)+'</b></div><div><span>Contrasena temporal</span><b class="us-pass">'+esc(pass)+'</b></div></div><div class="db-note" style="margin:10px 0 14px">Esta contrasena solo se muestra ahora. Al entrar, la app le pedira crear la suya.</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill pillO" style="flex:1" onclick="navigator.clipboard.writeText(window._usMsg).then(function(){tkToast(\'Copiado\');})">Copiar mensaje</button><a class="pill pillR" style="flex:1;display:flex;align-items:center;justify-content:center;text-decoration:none" target="_blank" href="https://wa.me/?text='+encodeURIComponent(msg)+'">Enviar por WhatsApp</a></div>');
+  openModal('Comparte el acceso','<div class="us-cred"><div><span>Correo</span><b>'+esc(email)+'</b></div><div><span>Contrasena temporal</span><b class="us-pass">'+esc(pass)+'</b></div></div><div class="db-note" style="margin:10px 0 14px">Esta contrasena solo se muestra ahora. Al entrar, la app le pedira crear la suya.</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill pillO" style="flex:1" onclick="navigator.clipboard.writeText(window._usMsg).then(function(){tkToast(\'Copiado\');})">Copiar mensaje</button><a class="pill pillR" style="flex:1;display:flex;align-items:center;justify-content:center;text-decoration:none" onclick="waOpen(this.href);return false" href="https://wa.me/?text='+encodeURIComponent(msg)+'">Enviar por WhatsApp</a></div>');
 }
 function usReset(uid){if(!confirm('Generar una contrasena temporal nueva para este usuario? La anterior dejara de funcionar.'))return;var u=(US_LIST||[]).filter(function(x){return x.user_id===uid;})[0]||{};
   showLoading();usCall({accion:'restablecer',user_id:uid}).then(function(d){hideLoading();usShowPass(u.nombre||d.email,d.email,d.password,false);usLoad();}).catch(function(e){hideLoading();alert(e.message);});}
@@ -1101,7 +1102,7 @@ function cbDetail(name){
   return h;
 }
 function cbPick(n){CB_SEL=n;document.getElementById('cb-det').innerHTML=cbDetail(n);Array.prototype.forEach.call(document.querySelectorAll('#cli-list .tk-item'),function(b){b.classList.toggle('on',b.getAttribute('data-id')===n);});if(window.innerWidth<=860){var d=document.getElementById('cb-det');if(d)d.scrollIntoView({behavior:'smooth',block:'start'});}}
-function cbRemind(name){var c=null;(window._CB||[]).forEach(function(x){if(x.cliente===name)c=x;});if(!c)return;window.open(waLink(c.cliente,c.telefono,c.totalSaldo,c.pendientes),'_blank');var first=c.peds.filter(function(x){return x.saldo>0.001;})[0];if(first)tkLog(String(first.id),'recordatorio');}
+function cbRemind(name){var c=null;(window._CB||[]).forEach(function(x){if(x.cliente===name)c=x;});if(!c)return;waOpen(waLink(c.cliente,c.telefono,c.totalSaldo,c.pendientes));var first=c.peds.filter(function(x){return x.saldo>0.001;})[0];if(first)tkLog(String(first.id),'recordatorio');}
 function cliFiltered(report){var q=CLI_Q.trim().toLowerCase();var arr=report.filter(function(c){return CB_TAB==='todos'||(CB_TAB==='saldo'?c.totalSaldo>0.001:c.totalSaldo<=0.001);});arr.sort(function(a,b){if(CLI_SORT==='saldo')return b.totalSaldo-a.totalSaldo||a.cliente.localeCompare(b.cliente,'es');if(CLI_SORT==='dias')return (b.dias||0)-(a.dias||0);if(CLI_SORT==='peds')return b.peds.length-a.peds.length;return a.cliente.localeCompare(b.cliente,'es');});if(q)arr=arr.filter(function(c){return c.cliente.toLowerCase().indexOf(q)>=0;});return arr;}
 function cliFilter(){CLI_Q=document.getElementById('cli-q').value;document.getElementById('cli-list').innerHTML=cliCards(cliFiltered(window._CB||[]));}
 function cliSort(){CLI_SORT=document.getElementById('cli-sort').value;render();}
@@ -1395,7 +1396,7 @@ function renderReportes(){
   if(!REP_LIST.length)return h+emptyBox('Sin reportes en este periodo','Elige otro periodo o registra pedidos.');
   h+='<div style="overflow-x:auto">';
   REP_LIST.forEach(function(o,i){
-    h+='<div style="margin-bottom:16px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;width:520px;max-width:100%"><span style="font-weight:700;font-size:13px">'+String(i+1).padStart(2,'0')+' &middot; '+esc(o.cliente)+'</span><span style="flex:1"></span>'+(o.telefono?'<a class="mini" style="color:var(--green);text-decoration:none" href="'+repWaLink(o.cliente,o.telefono,o.total,REP_PER)+'" target="_blank">WhatsApp</a>':'')+'<button class="mini" style="color:var(--rosaDark)" onclick="downloadRepOne('+i+')">Descargar PNG</button></div>';
+    h+='<div style="margin-bottom:16px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;width:520px;max-width:100%"><span style="font-weight:700;font-size:13px">'+String(i+1).padStart(2,'0')+' &middot; '+esc(o.cliente)+'</span><span style="flex:1"></span>'+(o.telefono?'<a class="mini" style="color:var(--green);text-decoration:none" href="'+repWaLink(o.cliente,o.telefono,o.total,REP_PER)+'" onclick="waOpen(this.href);return false">WhatsApp</a>':'')+'<button class="mini" style="color:var(--rosaDark)" onclick="downloadRepOne('+i+')">Descargar PNG</button></div>';
     h+='<div id="rc-'+i+'">'+repCardHTML(o.cliente,o.items,cfg)+'</div></div>';
   });
   h+='</div>';return h;
@@ -1434,6 +1435,17 @@ function tkCfg(){var o=(!CUENTA.slug||CUENTA.slug==='shopandgo')?repCfg():{head:
   if(!o.msgTicket)o.msgTicket=(function(){try{return localStorage.getItem('shopgo_repwamsg')||'';}catch(e){return '';}})()||TK_MSG_DEF.msgTicket;
   if(!o.msgCobro)o.msgCobro=TK_MSG_DEF.msgCobro;return o;}
 function tkFill(t,o,per){return String(t).replace(/Shop & Go/g,CUENTA.nombre).replace(/\{cliente\}/g,(o.cliente||'').split(' ')[0]).replace(/\{total\}/g,mxn(o.total)).replace(/\{saldo\}/g,mxn(o.saldo)).replace(/\{periodo\}/g,per);}
+/* WhatsApp: en computadora usa SIEMPRE la misma pestana (o la app de escritorio) */
+function waMode(){try{return localStorage.getItem('shopgo_wamode')||'web';}catch(e){return 'web';}}
+function waSetMode(m){try{localStorage.setItem('shopgo_wamode',m);}catch(e){}tkToast(m==='app'?'Listo: los envios se abriran en la app de WhatsApp de escritorio.':'Listo: los envios se abriran siempre en la misma pestana de WhatsApp Web.');}
+function waParts(url){var m=String(url).match(/wa\.me\/(\d*)\/?\??(?:text=(.*))?$/);return m?{num:m[1]||'',text:m[2]||''}:null;}
+function waOpen(url){
+  if(tkIsMobile()){window.open(url,'_blank');return;}
+  var p=waParts(url);if(!p){window.open(url,'shopgo_wa');return;}
+  var q=(p.num?'phone='+p.num+'&':'')+'text='+p.text;
+  if(waMode()==='app'){window.location.href='whatsapp://send?'+q;return;}
+  var w=window.open('https://web.whatsapp.com/send?'+q,'shopgo_wa');if(w)try{w.focus();}catch(e){}
+}
 function tkWaUrl(tel,text){var t=(tel||'').replace(/\D/g,'');var num=t.length===10?'52'+t:t;return 'https://wa.me/'+num+'?text='+encodeURIComponent(text);}
 function tkList(){
   var ps=periodos();if(!REP_PER||ps.indexOf(REP_PER)<0)REP_PER=defaultPeriodo()||ps[0]||'';
@@ -1458,6 +1470,7 @@ function renderTickets(){
   h+='<div class="tk-per"><label class="lbl">Periodo</label><select id="rep-per" onchange="tkSetPer()">'+ps.map(function(p){return '<option'+(p===REP_PER?' selected':'')+'>'+esc(p)+'</option>';}).join('')+'</select></div>';
   h+='<div class="tk-prog"><div class="tk-progtxt"><b>Tickets enviados</b><span>'+nEnv+' de '+all.length+'</span></div><div class="tk-bar"><div style="width:'+(all.length?Math.round(nEnv/all.length*100):0)+'%"></div></div></div>';
   h+='<div class="tk-acts"><button class="pill pillO" onclick="tkToggleCfg()">'+(TK_CFG_OPEN?'Ocultar textos':'Editar textos')+'</button><button class="pill tk-black" onclick="downloadRepAll()">Descargar todos (ZIP)</button><button class="pill pillR" onclick="tkExcel()">Exportar Excel</button></div></div>';
+  if(!tkIsMobile())h+='<div class="tk-wamode"><label class="lbl" style="margin:0">Enviar por WhatsApp en</label><select onchange="waSetMode(this.value)"><option value="web"'+(waMode()==='web'?' selected':'')+'>Una sola pestana de WhatsApp Web</option><option value="app"'+(waMode()==='app'?' selected':'')+'>App de WhatsApp de escritorio</option></select></div>';
   if(TK_CFG_OPEN){
     h+='<div class="tk-cfg">';
     h+='<div style="grid-column:1/-1"><label class="lbl">Tipo de letra del ticket</label><div class="tk-fontrow"><select id="tk-font" onchange="tkFontPreview(this.value)">'+TK_FONTS.map(function(f){return '<option value="'+f[0]+'"'+((cfg.font||'arial')===f[0]?' selected':'')+' style="font-family:'+esc(f[2])+'">'+esc(f[1])+'</option>';}).join('')+'</select></div><div class="tk-fontnote" id="tk-fontnote">'+esc(tkFontNote(cfg.font||'arial'))+'</div><div class="tk-fontnote">Al cambiarla ves el ticket de abajo con la nueva letra. Dale Guardar textos para que se quede.</div></div>';
@@ -1537,11 +1550,11 @@ function tkSend(id){
     }).catch(function(e){if(e&&e.name==='AbortError')return;window.open(tkWaUrl(o.telefono,text),'_blank');tkLog(id,'ticket');});
     return;
   }
-  var copied=tkCopyBlob(o);window.open(tkWaUrl(o.telefono,text),'_blank');
+  var copied=tkCopyBlob(o);waOpen(tkWaUrl(o.telefono,text));
   copied.then(function(){tkToast('Imagen copiada. En el chat presiona Ctrl+V para pegarla y enviala.');}).catch(function(){tkToast('Abre el chat y adjunta la imagen (usa Descargar PNG).');});
   tkLog(id,'ticket');
 }
-function tkRemind(id){var o=byId(REP_LIST,id);if(!o)return;window.open(tkWaUrl(o.telefono,tkFill(tkCfg().msgCobro,o,REP_PER)),'_blank');tkLog(id,'recordatorio');}
+function tkRemind(id){var o=byId(REP_LIST,id);if(!o)return;waOpen(tkWaUrl(o.telefono,tkFill(tkCfg().msgCobro,o,REP_PER)));tkLog(id,'recordatorio');}
 function tkCopyBlob(o){try{if(!navigator.clipboard||typeof ClipboardItem==='undefined')return Promise.reject();return navigator.clipboard.write([new ClipboardItem({'image/png':tkBlob(o)})]);}catch(e){return Promise.reject(e);}}
 function tkCopy(id){var o=byId(REP_LIST,id);if(!o)return;tkCopyBlob(o).then(function(){tkToast('Imagen copiada. Pegala con Ctrl+V.');}).catch(function(){tkToast('Tu navegador no permite copiar imagenes; usa Descargar PNG.');});}
 function tkUnsend(id){if(!confirm('Marcar este ticket como NO enviado?'))return;delete TK_ENV[id];if(TK_ENV_OK)sb.from('ticket_envios').delete().eq('pedido_id',id).then(function(){});render();}
@@ -1844,7 +1857,7 @@ function dbCobranza(D){
 function dbRemind(cli){
   var ped=null,saldo=0,per='';STATE.pedidos.forEach(function(p){if(p.cancelado||p.cliente!==cli)return;var v=pedVista(p);if(v.saldo<=0.001)return;saldo+=v.saldo;if(!ped||(p.fecha||'')<(ped.fecha||'')){ped=p;}});
   if(!ped)return;per=ped.periodo;var tel=clienteTel(cli);
-  window.open(tkWaUrl(tel,tkFill(tkCfg().msgCobro,{cliente:cli,saldo:saldo,total:saldo},per)),'_blank');tkLog(String(ped.id),'recordatorio');
+  waOpen(tkWaUrl(tel,tkFill(tkCfg().msgCobro,{cliente:cli,saldo:saldo,total:saldo},per)));tkLog(String(ped.id),'recordatorio');
 }
 function dbProductos(D){
   var m={};STATE.pedidos.forEach(function(p){if(p.cancelado)return;(p.items||[]).forEach(function(it){var k=p3Key(it.concepto);if(!k)return;var c=D.cat[k]||'Sin categoria';if(DB_CAT&&c!==DB_CAT)return;var x=m[k]||(m[k]={k:k,n:String(it.concepto).trim(),cat:c,uds:0,venta:0,cli:{}});x.uds+=Number(it.cantidad)||0;x.venta+=itemImp(it);x.cli[p.cliente]=(x.cli[p.cliente]||0)+1;});});
@@ -1874,7 +1887,7 @@ function dbClientes(D){
   var h='<div class="db-kpis">'+S.map(function(x){return '<button class="db-k db-seg '+x[3]+(DB_SEG===x[0]?' on':'')+'" onclick="DB_SEG=\''+x[0]+'\';render()"><span>'+x[1].toUpperCase()+'</span><div class="db-kv"><b>'+seg[x[0]].length+'</b></div><em class="db-sd">'+x[2]+'</em></button>';}).join('')+'</div>';
   var L=seg[DB_SEG].sort(function(a,b){return b.tot-a.tot;});var name=S.filter(function(x){return x[0]===DB_SEG;})[0][1];
   h+=dbCard('Clientes '+name.toLowerCase()+' ('+L.length+')',L.length?'<div style="overflow-x:auto"><table class="p3-tbl"><thead><tr><th>Cliente</th><th>Pedidos</th><th>Periodos</th><th style="text-align:right">Total comprado</th><th>Ultimo pedido</th><th></th></tr></thead><tbody>'+L.slice(0,60).map(function(c){var tel=clienteTel(c.n);
-    return '<tr><td><b>'+esc(c.n)+'</b></td><td>'+c.peds+'</td><td>'+Object.keys(c.pers).length+'</td><td style="text-align:right"><b>'+dbMoney(c.tot)+'</b></td><td>hace '+c.d+' dias</td><td>'+(tel&&(DB_SEG==='riesgo'||DB_SEG==='dorm')?'<a href="'+tkWaUrl(tel,'Hola '+c.n.split(' ')[0]+'! Te extranamos en '+CUENTA.nombre+'. Ya viene nuestro siguiente live, quieres que te avise?')+'" target="_blank">Escribirle por WhatsApp</a>':'')+'</td></tr>';}).join('')+'</tbody></table></div>':'<div class="db-empty">Nadie en este grupo.</div>');
+    return '<tr><td><b>'+esc(c.n)+'</b></td><td>'+c.peds+'</td><td>'+Object.keys(c.pers).length+'</td><td style="text-align:right"><b>'+dbMoney(c.tot)+'</b></td><td>hace '+c.d+' dias</td><td>'+(tel&&(DB_SEG==='riesgo'||DB_SEG==='dorm')?'<a href="'+tkWaUrl(tel,'Hola '+c.n.split(' ')[0]+'! Te extranamos en '+CUENTA.nombre+'. Ya viene nuestro siguiente live, quieres que te avise?')+'" onclick="waOpen(this.href);return false">Escribirle por WhatsApp</a>':'')+'</td></tr>';}).join('')+'</tbody></table></div>':'<div class="db-empty">Nadie en este grupo.</div>');
   return h;
 }
 function dbOperacion(D){
@@ -1989,7 +2002,7 @@ function plShowCred(nombre,slug,email,pass,existente){
   var url=plUrl(slug);var msg='Hola! Ya esta lista la app de '+nombre+'.\n\nEntra en: '+url+'\nCorreo: '+email+(pass?'\nContrasena temporal: '+pass+'\n\nAl entrar te pedira crear tu propia contrasena.':'\n\nEntra con tu contrasena de siempre.');window._plMsg=msg;
   openModal('Cliente creado','<div class="us-cred"><div><span>Direccion</span><b>'+esc(url)+'</b></div><div><span>Correo del administrador</span><b>'+esc(email)+'</b></div>'+(pass?'<div><span>Contrasena temporal</span><b class="us-pass">'+esc(pass)+'</b></div>':'')+'</div>'+
     '<div class="tk-warn" style="margin:12px 0">Ultimo paso: en <b>Vercel</b> agrega el dominio <b>'+esc(slug)+'.iappcon.com</b> a este proyecto (Settings &rarr; Domains). Mientras tanto puede entrar con <b>'+esc(location.origin+location.pathname)+'?c='+esc(slug)+'</b></div>'+
-    '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill pillO" style="flex:1" onclick="navigator.clipboard.writeText(window._plMsg).then(function(){tkToast(\'Copiado\');})">Copiar mensaje</button><a class="pill pillR" style="flex:1;display:flex;align-items:center;justify-content:center;text-decoration:none" target="_blank" href="https://wa.me/?text='+encodeURIComponent(msg)+'">Enviar por WhatsApp</a></div>');
+    '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill pillO" style="flex:1" onclick="navigator.clipboard.writeText(window._plMsg).then(function(){tkToast(\'Copiado\');})">Copiar mensaje</button><a class="pill pillR" style="flex:1;display:flex;align-items:center;justify-content:center;text-decoration:none" onclick="waOpen(this.href);return false" href="https://wa.me/?text='+encodeURIComponent(msg)+'">Enviar por WhatsApp</a></div>');
 }
 function plResetAdmin(id){if(!confirm('Generar una contrasena temporal nueva para el administrador de este cliente?'))return;var c=(PL_LIST||[]).filter(function(x){return x.id===id;})[0]||{};showLoading();plCall({accion:'reset_admin',id:id}).then(function(d){hideLoading();plShowCred(c.nombre,c.slug,d.email,d.password,false);}).catch(function(e){hideLoading();alert(e.message);});}
 function plActivo(id,on){if(!on&&!confirm('Suspender este cliente? Sus usuarios ya no podran ver datos hasta que lo reactives.'))return;showLoading();plCall({accion:'actualizar',id:id,activo:on}).then(function(){hideLoading();PL_LIST=null;render();}).catch(function(e){hideLoading();alert(e.message);});}
