@@ -1437,14 +1437,16 @@ function tkCfg(){var o=(!CUENTA.slug||CUENTA.slug==='shopandgo')?repCfg():{head:
 function tkFill(t,o,per){return String(t).replace(/Shop & Go/g,CUENTA.nombre).replace(/\{cliente\}/g,(o.cliente||'').split(' ')[0]).replace(/\{total\}/g,mxn(o.total)).replace(/\{saldo\}/g,mxn(o.saldo)).replace(/\{periodo\}/g,per);}
 /* WhatsApp: en computadora usa SIEMPRE la misma pestana (o la app de escritorio) */
 function waMode(){try{return localStorage.getItem('shopgo_wamode')||'web';}catch(e){return 'web';}}
-function waSetMode(m){try{localStorage.setItem('shopgo_wamode',m);}catch(e){}tkToast(m==='app'?'Listo: los envios se abriran en la app de WhatsApp de escritorio.':'Listo: los envios se abriran siempre en la misma pestana de WhatsApp Web.');}
+function waSetMode(m){try{localStorage.setItem('shopgo_wamode',m);}catch(e){}tkToast(m==='app'?'Listo: los envios se abriran en la app de WhatsApp de escritorio.':'Listo: los envios se abriran en WhatsApp Web (una pestana por envio).');render();}
+function waHint(){if(document.getElementById('wa-hint'))return;var d=document.createElement('div');d.id='wa-hint';d.className='tk-toast';d.style.pointerEvents='auto';d.innerHTML='&iquest;No se abri&oacute; WhatsApp? Instala la app de escritorio desde <a href="https://www.whatsapp.com/download" target="_blank" style="color:#7FE0C0;font-weight:700">whatsapp.com/download</a> o cambia a WhatsApp Web en Tickets y cobro.';document.body.appendChild(d);setTimeout(function(){d.remove();},9000);}
 function waParts(url){var m=String(url).match(/wa\.me\/(\d*)\/?\??(?:text=(.*))?$/);return m?{num:m[1]||'',text:m[2]||''}:null;}
 function waOpen(url){
   if(tkIsMobile()){window.open(url,'_blank');return;}
   var p=waParts(url);if(!p){window.open(url,'shopgo_wa');return;}
   var q=(p.num?'phone='+p.num+'&':'')+'text='+p.text;
-  if(waMode()==='app'){window.location.href='whatsapp://send?'+q;return;}
-  var w=window.open('https://web.whatsapp.com/send?'+q,'shopgo_wa');if(w)try{w.focus();}catch(e){}
+  if(waMode()==='app'){window.location.href='whatsapp://send?'+q;
+    setTimeout(function(){if(document.hasFocus())waHint();},3500);return;}
+  window.open('https://web.whatsapp.com/send?'+q,'_blank');
 }
 function tkWaUrl(tel,text){var t=(tel||'').replace(/\D/g,'');var num=t.length===10?'52'+t:t;return 'https://wa.me/'+num+'?text='+encodeURIComponent(text);}
 function tkList(){
@@ -1470,7 +1472,7 @@ function renderTickets(){
   h+='<div class="tk-per"><label class="lbl">Periodo</label><select id="rep-per" onchange="tkSetPer()">'+ps.map(function(p){return '<option'+(p===REP_PER?' selected':'')+'>'+esc(p)+'</option>';}).join('')+'</select></div>';
   h+='<div class="tk-prog"><div class="tk-progtxt"><b>Tickets enviados</b><span>'+nEnv+' de '+all.length+'</span></div><div class="tk-bar"><div style="width:'+(all.length?Math.round(nEnv/all.length*100):0)+'%"></div></div></div>';
   h+='<div class="tk-acts"><button class="pill pillO" onclick="tkToggleCfg()">'+(TK_CFG_OPEN?'Ocultar textos':'Editar textos')+'</button><button class="pill tk-black" onclick="downloadRepAll()">Descargar todos (ZIP)</button><button class="pill pillR" onclick="tkExcel()">Exportar Excel</button></div></div>';
-  if(!tkIsMobile())h+='<div class="tk-wamode"><label class="lbl" style="margin:0">Enviar por WhatsApp en</label><select onchange="waSetMode(this.value)"><option value="web"'+(waMode()==='web'?' selected':'')+'>Una sola pestana de WhatsApp Web</option><option value="app"'+(waMode()==='app'?' selected':'')+'>App de WhatsApp de escritorio</option></select></div>';
+  if(!tkIsMobile())h+='<div class="tk-wamode"><label class="lbl" style="margin:0">Enviar por WhatsApp en</label><select onchange="waSetMode(this.value)"><option value="app"'+(waMode()==='app'?' selected':'')+'>App de WhatsApp de escritorio (sin pestanas)</option><option value="web"'+(waMode()==='web'?' selected':'')+'>WhatsApp Web (abre una pestana por envio)</option></select>'+(waMode()==='web'?'<span class="tk-fontnote" style="margin:0">WhatsApp Web no deja reutilizar su pestana. Para que no se abran pesta&ntilde;as usa la app: <a href="https://www.whatsapp.com/download" target="_blank" style="color:var(--rosaDark);font-weight:700">desc&aacute;rgala aqu&iacute;</a>.</span>':'')+'</div>';
   if(TK_CFG_OPEN){
     h+='<div class="tk-cfg">';
     h+='<div style="grid-column:1/-1"><label class="lbl">Tipo de letra del ticket</label><div class="tk-fontrow"><select id="tk-font" onchange="tkFontPreview(this.value)">'+TK_FONTS.map(function(f){return '<option value="'+f[0]+'"'+((cfg.font||'arial')===f[0]?' selected':'')+' style="font-family:'+esc(f[2])+'">'+esc(f[1])+'</option>';}).join('')+'</select></div><div class="tk-fontnote" id="tk-fontnote">'+esc(tkFontNote(cfg.font||'arial'))+'</div><div class="tk-fontnote">Al cambiarla ves el ticket de abajo con la nueva letra. Dale Guardar textos para que se quede.</div></div>';
