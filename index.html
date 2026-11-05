@@ -59,6 +59,8 @@
   col.rc-cqty{width:56px}col.rc-ccst{width:66px}col.rc-csub{width:78px}
   .rc-foot{color:#5F5F5F;font-size:14.5px;text-align:center;line-height:1.34;margin:14px 4px 10px}
   .rc-foot u{text-decoration:underline}
+  .tel-ed{background:none;border:none;color:var(--rosaDark);font-weight:700;font-size:12.5px;padding:0 2px;cursor:pointer;white-space:nowrap}.tel-ed:hover{text-decoration:underline}
+  .tk-fontrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.tk-fontrow select{flex:1 1 220px}.tk-fontnote{font-size:12.5px;color:var(--inkSoft);margin-top:4px}
   .rc-bank{text-align:center;color:#2E59A8;line-height:1.3}
   .rc-bank .rc-bt{font-weight:bold;font-size:17px;text-decoration:underline}
   .rc-bank .rc-bn{font-weight:bold;font-size:19px;margin-top:3px}
@@ -447,7 +449,7 @@
   .pk-btns{display:flex;gap:6px;align-items:center}.pk-b{height:36px;padding:0 12px;font-size:12px}.pk-pr{width:36px;height:36px;font-size:15px}
   @media print{.side,.topbar,.sidebg{display:none!important}body{zoom:1}}
 </style>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,800&family=Didact+Gothic&family=Questrial&family=Montserrat:wght@400;700&family=Poppins:wght@400;700&family=Nunito:wght@400;700&family=Roboto:wght@400;700&display=swap">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#10A37B">
@@ -590,6 +592,12 @@ function opEditMeta(pedidoId,meta){
     return sb.from('pedidos').update(patch).eq('id',pedidoId).then(function(r){if(r.error)throw r.error;});
   });
 }
+function opEditTel(nombre,tel){
+  var id=CLI_ID_BY_NAME[(nombre||'').trim().toLowerCase()];
+  if(!id)return Promise.reject(new Error('No encontre al cliente "'+nombre+'".'));
+  tel=(tel||'').trim();
+  return sb.from('clientes').update({telefono:tel||null}).eq('id',id).then(function(r){if(r.error)throw r.error;if(CLI_BY_ID[id])CLI_BY_ID[id].telefono=tel;});
+}
 function opPatchPedido(pedidoId,patch){
   var up={};
   if(patch.hasOwnProperty('entregado'))up.entregado=!!patch.entregado;
@@ -643,6 +651,7 @@ var OPS={
   editItem:opEditItem,
   deleteItem:function(itemId){return delRow('pedido_items',itemId);},
   editMeta:opEditMeta,
+  editTel:opEditTel,
   patchPedido:opPatchPedido,
   deletePedido:opDeletePedido,
   addPago:function(pago){return opAddPagos([pago]);},
@@ -928,7 +937,8 @@ function loadCuenta(){
 function toggleExp(id){EXPANDED=EXPANDED===id?null:id;render();}
 function toggleCli(n){EXPCLI=EXPCLI===n?null:n;render();}
 
-var PD_PER='__def', PD_EST='todos', PD_ENT='', PD_SEL='';
+var PD_PER='__def', PD_EST='todos', PD_ENT='', PD_SEL='', PD_LUG='';
+function pdLug(p){return (p.lugar||'').trim()||'(sin lugar)';}
 function pdBase(){return STATE.pedidos.map(function(p){return {p:p,v:pedVista(p)};});}
 function pdEntrega(p){return p.entregado?'Entregado':(p.empacado?'Empacado':'Por empacar');}
 function pdList(){
@@ -938,6 +948,7 @@ function pdList(){
     if(PD_PER&&p.periodo!==PD_PER)return false;
     if(PD_EST==='cancelados'){if(!p.cancelado)return false;}else{if(p.cancelado)return false;if(PD_EST!=='todos'&&v.estatus!==PD_EST)return false;}
     if(PD_ENT&&pdEntrega(p)!==PD_ENT)return false;
+    if(PD_LUG&&pdLug(p)!==PD_LUG)return false;
     if(q&&!((p.cliente||'').toLowerCase().indexOf(q)>=0||String(p.folio||'').toLowerCase().indexOf(q)>=0||fmtDate(p.fecha).indexOf(q)>=0||(p.items||[]).some(function(it){return String(it.concepto||'').toLowerCase().indexOf(q)>=0;})))return false;
     return true;}).sort(function(a,b){return (b.p.createdAt||0)-(a.p.createdAt||0)||String(b.p.folio).localeCompare(String(a.p.folio));});
 }
@@ -946,7 +957,9 @@ function renderPedidos(vis){
   if(STATE.pedidos.length===0)return emptyBox('Aun no hay pedidos','Crea el primero con el boton + Nuevo pedido.');
   var l=pdList(),ps=p3PerOrder().slice().reverse();
   var tot=0,cob=0,sal=0;l.forEach(function(o){if(o.p.cancelado)return;tot+=o.v.total;cob+=o.v.pagado;sal+=Math.max(0,o.v.saldo);});
-  var base=pdBase().filter(function(o){return !PD_PER||o.p.periodo===PD_PER;});
+  var basePer=pdBase().filter(function(o){return !PD_PER||o.p.periodo===PD_PER;});
+  var lugs={};basePer.forEach(function(o){if(!o.p.cancelado)lugs[pdLug(o.p)]=(lugs[pdLug(o.p)]||0)+1;});if(PD_LUG&&!lugs[PD_LUG])lugs[PD_LUG]=0;
+  var base=basePer.filter(function(o){return !PD_LUG||pdLug(o.p)===PD_LUG;});
   var cnt=function(f){return base.filter(f).length;};
   var h='<div class="db-kpis pd-k">'+[['Pedidos',String(l.filter(function(o){return !o.p.cancelado;}).length),''],['Venta',dbMoney(tot),'db-dark'],['Cobrado',dbMoney(cob),'db-mint'],['Saldo',dbMoney(sal),'db-pink']].map(function(k){return '<div class="db-k '+k[2]+'"><span>'+k[0]+'</span><div class="db-kv"><b>'+k[1]+'</b></div></div>';}).join('')+'</div>';
   var na=upcomingAgenda(2);
@@ -954,6 +967,7 @@ function renderPedidos(vis){
   h+='<div class="tk-top"><div class="tk-toprow">';
   h+='<div class="tk-per"><label class="lbl">Periodo</label><select onchange="PD_PER=this.value;PD_SEL=\'\';render()"><option value="">Todos los periodos</option>'+ps.map(function(p){return '<option'+(p===PD_PER?' selected':'')+'>'+esc(p)+'</option>';}).join('')+'</select></div>';
   h+='<div class="tk-per"><label class="lbl">Entrega</label><select onchange="PD_ENT=this.value;render()">'+[['','Todas'],['Por empacar','Por empacar'],['Empacado','Empacadas'],['Entregado','Entregadas']].map(function(o){return '<option value="'+o[0]+'"'+(PD_ENT===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select></div>';
+  h+='<div class="tk-per"><label class="lbl">Lugar de entrega</label><select onchange="PD_LUG=this.value;PD_SEL=\'\';render()"><option value="">Todos los lugares</option>'+Object.keys(lugs).sort(function(x,y){return x==='(sin lugar)'?1:(y==='(sin lugar)'?-1:x.localeCompare(y,'es'));}).map(function(l){return '<option value="'+esc(l)+'"'+(l===PD_LUG?' selected':'')+'>'+esc(l)+' ('+lugs[l]+')</option>';}).join('')+'</select></div>';
   h+='<div class="tk-per" style="flex:1 1 220px"><label class="lbl">Buscar</label><input id="ped-q" value="'+esc(PED_Q)+'" oninput="pedFilter()" placeholder="Cliente, folio, fecha o producto..."></div>';
   h+='<div class="tk-acts"><button class="pill pillO" onclick="pedMode(\'productos\')">Productos del periodo</button><button class="pill pillR" onclick="pdExcel()">Exportar Excel</button></div></div></div>';
   var tabs=[['todos','Todos',cnt(function(o){return !o.p.cancelado;})],['Pendiente','Pendientes',cnt(function(o){return !o.p.cancelado&&o.v.estatus==='Pendiente';})],['Parcial','Parciales',cnt(function(o){return !o.p.cancelado&&o.v.estatus==='Parcial';})],['Pagado','Pagados',cnt(function(o){return !o.p.cancelado&&o.v.estatus==='Pagado';})],['cancelados','Cancelados',cnt(function(o){return o.p.cancelado;})]];
@@ -1073,7 +1087,7 @@ function renderReport(report){
 }
 function cbDetail(name){
   var c=null;(window._CB||[]).forEach(function(x){if(x.cliente===name)c=x;});if(!c)return '';
-  var h='<div class="tk-box"><div class="pd-hd"><div><b>'+esc(c.cliente)+'</b><span>'+(c.telefono?esc(c.telefono):'Sin telefono')+' &middot; '+c.peds.length+' pedido'+(c.peds.length!==1?'s':'')+(c.dias!=null?' &middot; debe desde hace '+c.dias+' dias':'')+'</span></div>'+(c.totalSaldo>0.001?tkChip('Con saldo','var(--rosaSoft)','var(--rosaDark)'):tkChip('Al corriente','#E6F7F0','#0B5E45'))+'</div>';
+  var h='<div class="tk-box"><div class="pd-hd"><div><b>'+esc(c.cliente)+'</b><span>'+(c.telefono?esc(c.telefono):'Sin telefono')+' '+telBtn(c.cliente,c.telefono)+' &middot; '+c.peds.length+' pedido'+(c.peds.length!==1?'s':'')+(c.dias!=null?' &middot; debe desde hace '+c.dias+' dias':'')+'</span></div>'+(c.totalSaldo>0.001?tkChip('Con saldo','var(--rosaSoft)','var(--rosaDark)'):tkChip('Al corriente','#E6F7F0','#0B5E45'))+'</div>';
   h+='<div class="p3-kpis"><div class="p3-k p3-dark"><span>Total comprado</span><b>'+mxn(c.total)+'</b></div><div class="p3-k p3-mint"><span>Pagado</span><b>'+mxn(c.totalPagado)+'</b></div><div class="p3-k p3-pink"><span>Saldo</span><b>'+mxn(c.totalSaldo)+'</b></div></div>';
   var first=c.peds.filter(function(x){return x.saldo>0.001;})[0];
   h+='<div class="tk-btns">';
@@ -1081,7 +1095,7 @@ function cbDetail(name){
   if(first)h+='<button class="pill pillO" onclick="openPago(\''+first.id+'\')">$ Registrar pago</button>';
   h+='</div></div>';
   h+='<div class="tk-box"><div class="p3-sub" style="margin:0">Pedidos</div><div style="overflow-x:auto"><table class="p3-tbl"><thead><tr><th>Folio</th><th>Periodo</th><th style="text-align:right">Total</th><th style="text-align:right">Pagado</th><th style="text-align:right">Saldo</th><th>Estatus</th><th></th></tr></thead><tbody>'+
-    c.peds.slice().sort(function(a,b){var pa=byId(STATE.pedidos,a.id)||{},pb=byId(STATE.pedidos,b.id)||{};return (pb.fecha||'').localeCompare(pa.fecha||'')||(Number(b.folio)||0)-(Number(a.folio)||0);}).map(function(x){var st=estStyle(x.estatus)||['#EEE','#333'];return '<tr><td><a href="#" onclick="PD_SEL=\''+x.id+'\';PD_PER=\'\';PD_EST=\'todos\';setView(\'pedidos\');return false" style="color:var(--rosaDark)"><b>'+esc(x.folio)+'</b></a></td><td>'+esc(x.periodo)+'</td><td style="text-align:right">'+mxn(x.total)+'</td><td style="text-align:right">'+mxn(x.pagado)+'</td><td style="text-align:right"><b>'+(x.saldo>0.001?mxn(x.saldo):'-')+'</b></td><td><span class="tk-chip" style="background:'+st[0]+';color:'+st[1]+'">'+esc(x.estatus)+'</span></td><td>'+(x.saldo>0.001?'<button class="pill pillO pk-b" onclick="openPago(\''+x.id+'\')">Abonar</button>':'')+'</td></tr>';}).join('')+'</tbody></table></div></div>';
+    c.peds.slice().sort(function(a,b){var pa=byId(STATE.pedidos,a.id)||{},pb=byId(STATE.pedidos,b.id)||{};return (pb.fecha||'').localeCompare(pa.fecha||'')||(Number(b.folio)||0)-(Number(a.folio)||0);}).map(function(x){var st=estStyle(x.estatus)||['#EEE','#333'];return '<tr><td><a href="#" onclick="PD_SEL=\''+x.id+'\';PD_PER=\'\';PD_EST=\'todos\';PD_LUG=\'\';setView(\'pedidos\');return false" style="color:var(--rosaDark)"><b>'+esc(x.folio)+'</b></a></td><td>'+esc(x.periodo)+'</td><td style="text-align:right">'+mxn(x.total)+'</td><td style="text-align:right">'+mxn(x.pagado)+'</td><td style="text-align:right"><b>'+(x.saldo>0.001?mxn(x.saldo):'-')+'</b></td><td><span class="tk-chip" style="background:'+st[0]+';color:'+st[1]+'">'+esc(x.estatus)+'</span></td><td>'+(x.saldo>0.001?'<button class="pill pillO pk-b" onclick="openPago(\''+x.id+'\')">Abonar</button>':'')+'</td></tr>';}).join('')+'</tbody></table></div></div>';
   var pagos=STATE.pagos.filter(function(g){return c.peds.some(function(x){return x.id===g.pedidoId;});}).sort(function(a,b){return (b.fecha||'').localeCompare(a.fecha||'');});
   h+='<div class="tk-box"><div class="p3-sub" style="margin:0">Pagos ('+pagos.length+')</div>'+(pagos.length?pagos.slice(0,30).map(function(g){return '<div class="pd-it"><span>'+fmtDate(g.fecha)+' &middot; '+esc(g.metodo||'')+' &middot; Folio '+esc(g.folio)+'</span><b style="color:#0B5E45">'+mxn(g.monto)+'</b></div>';}).join(''):'<div class="db-note">Sin pagos.</div>')+'</div>';
   return h;
@@ -1257,6 +1271,25 @@ function submitItem(){
   else run('addItem',[window._itemPed,payload],null);
 }
 
+/* --- editar telefono del cliente --- */
+function telBtn(nombre,tel){return '<button class="tel-ed" data-n="'+esc(nombre)+'" onclick="openEditTel(this.getAttribute(\'data-n\'))">&#9998; '+(tel?'Editar telefono':'Agregar telefono')+'</button>';}
+function openEditTel(nombre){
+  window._telCli=nombre;var cur=clienteTel(nombre)||'';
+  var h='<div class="fld"><label class="lbl">Cliente</label><div style="font-weight:700;font-size:16px">'+esc(nombre)+'</div></div>';
+  h+='<div class="fld"><label class="lbl">WhatsApp (10 digitos)</label><input id="tel-new" inputmode="tel" value="'+esc(cur)+'" placeholder="8112345678"></div>';
+  h+='<div style="font-size:12.5px;color:var(--inkSoft);margin:-4px 0 12px">Se actualiza en todos sus pedidos, en Tickets y cobro y en los recordatorios. D&eacute;jalo vac&iacute;o para quitarlo.</div>';
+  h+='<button class="btn btnR" onclick="submitEditTel()">Guardar telefono</button>';
+  openModal('Telefono del cliente',h);
+  setTimeout(function(){var i=document.getElementById('tel-new');if(i){i.focus();i.select();}},60);
+}
+function submitEditTel(){
+  var raw=document.getElementById('tel-new').value.trim(),d=raw.replace(/\D/g,'');
+  if(d&&!(d.length===10||(d.length===12&&d.indexOf('52')===0)||(d.length===13&&d.indexOf('521')===0))){if(!confirm('El numero tiene '+d.length+' digitos (lo normal son 10). Guardarlo asi?'))return;}
+  if(d.length===10)raw=d;
+  closeModal();TK_BLOB={};
+  run('editTel',[window._telCli,raw],null);
+}
+
 /* --- edit meta --- */
 function openEditMeta(pedidoId){
   var p=byId(STATE.pedidos,pedidoId);if(!p)return;window._metaPed=pedidoId;
@@ -1311,11 +1344,32 @@ function rInt(v){return (v===null||v===undefined||v==='')?'':String(Math.round(N
 function rMoney(v){return '$ '+(Number(v)||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function safe(s){return (s||'').replace(/[^\w\- ]/g,'').trim().replace(/\s+/g,'_');}
 function repFootHTML(cfg){var full=cfg.foot||'',sub=(cfg.sub||'').trim();if(sub&&full.indexOf(sub)>=0){var i=full.indexOf(sub);return esc(full.slice(0,i))+'<u>'+esc(sub)+'</u>'+esc(full.slice(i+sub.length));}return esc(full);}
+var TK_FONTS=[
+  ['arial','Arial (la de siempre)','Arial,Helvetica,sans-serif',''],
+  ['century','Century Gothic','"Century Gothic","Didact Gothic",sans-serif','Didact Gothic'],
+  ['didact','Didact Gothic (parecida a Century, igual en todos los equipos)','"Didact Gothic",sans-serif','Didact Gothic'],
+  ['questrial','Questrial (tipo Century, mas redonda)','Questrial,sans-serif','Questrial'],
+  ['montserrat','Montserrat','Montserrat,sans-serif','Montserrat'],
+  ['poppins','Poppins','Poppins,sans-serif','Poppins'],
+  ['nunito','Nunito','Nunito,sans-serif','Nunito'],
+  ['roboto','Roboto','Roboto,sans-serif','Roboto'],
+  ['verdana','Verdana','Verdana,Geneva,sans-serif',''],
+  ['georgia','Georgia (con remates)','Georgia,"Times New Roman",serif','']
+];
+function tkFontDef(k){for(var i=0;i<TK_FONTS.length;i++)if(TK_FONTS[i][0]===k)return TK_FONTS[i];return TK_FONTS[0];}
+function tkFontFam(cfg){return tkFontDef(cfg&&cfg.font)[2];}
+// Century Gothic solo existe si el equipo la tiene instalada (Windows/Office)
+function hasCentury(){try{var c=document.createElement('canvas').getContext('2d'),t='mmmmmmmmmmlliWWQ@#';c.font='40px monospace';var a=c.measureText(t).width;c.font='40px "Century Gothic",monospace';return c.measureText(t).width!==a;}catch(e){return false;}}
+function tkFontNote(k){if(k==='century'&&!hasCentury())return 'Este equipo no tiene Century Gothic instalada; aqui los tickets saldran con Didact Gothic, que se ve casi igual.';if(k==='century')return 'Este equipo si tiene Century Gothic. En celulares y equipos sin ella saldra Didact Gothic.';return '';}
+// espera a que la letra elegida termine de cargar antes de tomar la imagen
+function tkFontReady(){var d=tkFontDef(tkCfg().font),f=d[3];if(!f||!document.fonts||!document.fonts.load)return Promise.resolve();var q='"'+f+'"';return Promise.all([document.fonts.load('400 16px '+q),document.fonts.load('700 16px '+q)]).catch(function(){}).then(function(){return document.fonts.ready;});}
+function rcShot(el){return tkFontReady().then(function(){return html2canvas(el,{scale:2,backgroundColor:'#ffffff',width:520,windowWidth:640});});}
+function tkFontPreview(k){var fam=tkFontDef(k)[2];Array.prototype.forEach.call(document.querySelectorAll('.tk-prev .rep-card'),function(c){c.style.fontFamily=fam;});var n=document.getElementById('tk-fontnote');if(n)n.textContent=tkFontNote(k);}
 function repCardHTML(cli,items,cfg){
   var total=items.reduce(function(a,it){return a+(Number(it.total)||0);},0);
   var rows=items.slice();while(rows.length<9)rows.push({cant:null,desc:'',costo:null,total:null});
   var body=rows.map(function(it){return '<tr><td class="rc-qty">'+esc(rInt(it.cant))+'</td><td class="rc-desc">'+esc(it.desc)+'</td><td class="rc-cst">'+esc(rInt(it.costo))+'</td><td class="rc-sub">'+esc(rInt(it.total))+'</td></tr>';}).join('');
-  return '<div class="rep-card"><div class="rc-head">'+esc(cfg.head)+'</div>'+
+  return '<div class="rep-card" style="font-family:'+esc(tkFontFam(cfg))+'"><div class="rc-head">'+esc(cfg.head)+'</div>'+
     '<div class="rc-band"><img class="rc-logo" style="object-fit:cover" src="'+cuentaLogo()+'"><div class="rc-pick">'+esc(cfg.pick)+'</div></div>'+
     '<div class="rc-namerow"><div class="rc-name">'+esc(cli)+'</div><div class="rc-badge">TOTAL(MXN)</div><div class="rc-amt">'+esc(rMoney(total))+'</div></div>'+
     '<table class="rc-tbl"><colgroup><col class="rc-cqty"><col><col class="rc-ccst"><col class="rc-csub"></colgroup>'+
@@ -1350,7 +1404,7 @@ function repEl(i){var w=document.getElementById('rc-'+i);return w?(w.querySelect
 function downloadRepOne(i){
   var el=repEl(i);if(!el||typeof html2canvas==='undefined'){alert('No se pudo generar la imagen (revisa tu conexion).');return;}
   showLoading();
-  html2canvas(el,{scale:2,backgroundColor:'#ffffff',width:520,windowWidth:640}).then(function(canvas){var a=document.createElement('a');a.download='Cobro_'+safe(REP_LIST[i].cliente)+'.png';a.href=canvas.toDataURL('image/png');document.body.appendChild(a);a.click();a.remove();hideLoading();}).catch(function(e){hideLoading();alert('Error: '+e);});
+  rcShot(el).then(function(canvas){var a=document.createElement('a');a.download='Cobro_'+safe(REP_LIST[i].cliente)+'.png';a.href=canvas.toDataURL('image/png');document.body.appendChild(a);a.click();a.remove();hideLoading();}).catch(function(e){hideLoading();alert('Error: '+e);});
 }
 function downloadRepAll(){
   if(!REP_LIST.length)return;
@@ -1359,7 +1413,7 @@ function downloadRepAll(){
   function next(){
     if(i>=REP_LIST.length){zip.generateAsync({type:'blob'}).then(function(blob){var a=document.createElement('a');a.download='Reportes_cobro_'+safe(REP_PER)+'.zip';a.href=URL.createObjectURL(blob);document.body.appendChild(a);a.click();a.remove();hideLoading();});return;}
     var el=repEl(i);
-    html2canvas(el,{scale:2,backgroundColor:'#ffffff',width:520,windowWidth:640}).then(function(canvas){var data=canvas.toDataURL('image/png').split(',')[1];zip.file(String(i+1).padStart(2,'0')+'_'+safe(REP_LIST[i].cliente)+'.png',data,{base64:true});i++;next();}).catch(function(e){hideLoading();alert('Error: '+e);});
+    rcShot(el).then(function(canvas){var data=canvas.toDataURL('image/png').split(',')[1];zip.file(String(i+1).padStart(2,'0')+'_'+safe(REP_LIST[i].cliente)+'.png',data,{base64:true});i++;next();}).catch(function(e){hideLoading();alert('Error: '+e);});
   }
   next();
 }
@@ -1406,6 +1460,7 @@ function renderTickets(){
   h+='<div class="tk-acts"><button class="pill pillO" onclick="tkToggleCfg()">'+(TK_CFG_OPEN?'Ocultar textos':'Editar textos')+'</button><button class="pill tk-black" onclick="downloadRepAll()">Descargar todos (ZIP)</button><button class="pill pillR" onclick="tkExcel()">Exportar Excel</button></div></div>';
   if(TK_CFG_OPEN){
     h+='<div class="tk-cfg">';
+    h+='<div style="grid-column:1/-1"><label class="lbl">Tipo de letra del ticket</label><div class="tk-fontrow"><select id="tk-font" onchange="tkFontPreview(this.value)">'+TK_FONTS.map(function(f){return '<option value="'+f[0]+'"'+((cfg.font||'arial')===f[0]?' selected':'')+' style="font-family:'+esc(f[2])+'">'+esc(f[1])+'</option>';}).join('')+'</select></div><div class="tk-fontnote" id="tk-fontnote">'+esc(tkFontNote(cfg.font||'arial'))+'</div><div class="tk-fontnote">Al cambiarla ves el ticket de abajo con la nueva letra. Dale Guardar textos para que se quede.</div></div>';
     h+='<div><label class="lbl">Encabezado (fechas de compra)</label><input id="rep-head" value="'+esc(cfg.head)+'"></div>';
     h+='<div><label class="lbl">Frase a subrayar</label><input id="rep-sub" value="'+esc(cfg.sub)+'"></div>';
     h+='<div><label class="lbl">Linea de recoger</label><textarea id="rep-pick">'+esc(cfg.pick)+'</textarea></div>';
@@ -1439,10 +1494,10 @@ function tkListHTML(list){
 function tkDetHTML(o,cfg){
   var per=REP_PER,i=REP_LIST.indexOf(o),h='<div class="tk-box">';
   var tel=o.telefono;
-  h+='<div class="tk-dhead"><div><b>'+esc(o.cliente)+'</b><span>'+(tel?esc(tel):'Sin telefono')+' &middot; Total '+mxn(o.total)+(o.saldo>0.001?' &middot; Saldo '+mxn(o.saldo):' &middot; Pagado')+'</span></div></div>';
+  h+='<div class="tk-dhead"><div><b>'+esc(o.cliente)+'</b><span>'+(tel?esc(tel):'Sin telefono')+' '+telBtn(o.cliente,tel)+' &middot; Total '+mxn(o.total)+(o.saldo>0.001?' &middot; Saldo '+mxn(o.saldo):' &middot; Pagado')+'</span></div></div>';
   h+='<div class="tk-btns">';
   if(tel)h+='<button class="pill pillR tk-main" onclick="tkSend(\''+o.id+'\')">'+(o.env.ticket?'Reenviar ticket por WhatsApp':'Enviar ticket por WhatsApp')+'</button>';
-  else h+='<button class="pill tk-main" disabled style="background:#EEF1F0;color:#6B7772">Sin telefono: agregalo en el pedido</button>';
+  else h+='<button class="pill tk-main" style="background:#EEF1F0;color:#3F4A46" data-n="'+esc(o.cliente)+'" onclick="openEditTel(this.getAttribute(\'data-n\'))">Sin telefono: agregalo aqui</button>';
   h+='<button class="pill pillO" onclick="tkCopy(\''+o.id+'\')">Copiar imagen</button><button class="pill pillO" onclick="downloadRepOne('+i+')">Descargar PNG</button></div>';
   if(o.saldo>0.001&&tel)h+='<button class="pill tk-rem" onclick="tkRemind(\''+o.id+'\')">Enviar recordatorio de cobro ('+mxn(o.saldo)+')</button>';
   h+='<div class="tk-msg"><span>Mensaje que se envia &middot; </span>'+esc(tkFill(cfg.msgTicket,o,per))+'</div>';
@@ -1456,7 +1511,7 @@ function tkSearch(){TK_Q=document.getElementById('tk-q').value;var all=REP_LIST;
 function tkPick(id){TK_SEL=id;var o=byId(REP_LIST,id);document.getElementById('tk-det').innerHTML=o?tkDetHTML(o,tkCfg()):'';Array.prototype.forEach.call(document.querySelectorAll('.tk-item'),function(b){b.classList.toggle('on',b.getAttribute('data-id')===id);});tkAfterRender();if(window.innerWidth<=860){var d=document.getElementById('tk-det');if(d)d.scrollIntoView({behavior:'smooth',block:'start'});}}
 function tkToggleCfg(){TK_CFG_OPEN=!TK_CFG_OPEN;render();}
 function tkSaveCfg(){
-  var t={head:val('rep-head'),pick:val('rep-pick'),foot:val('rep-foot'),sub:val('rep-sub'),num:val('rep-num'),bank:val('rep-bank'),msgTicket:val('tk-mt'),msgCobro:val('tk-mc')};
+  var t={head:val('rep-head'),pick:val('rep-pick'),foot:val('rep-foot'),sub:val('rep-sub'),num:val('rep-num'),bank:val('rep-bank'),msgTicket:val('tk-mt'),msgCobro:val('tk-mc'),font:(val('tk-font')||'arial')};
   try{localStorage.setItem('shopgo_repcfg',JSON.stringify(t));}catch(e){}
   var conf=Object.assign({},CUENTA.config||{},{ticket:t});CUENTA.config=conf;TK_BLOB={};
   if(CUENTA.id){sb.from('cuentas').update({config:conf}).eq('id',CUENTA.id).then(function(r){if(r.error)alert('Se guardo solo en este equipo (falta permiso en Supabase): '+r.error.message);});}
@@ -1464,7 +1519,7 @@ function tkSaveCfg(){
 }
 // imagen del ticket seleccionado (se prepara antes para que compartir sea inmediato)
 function tkAfterRender(){var o=byId(REP_LIST,TK_SEL);if(!o||TK_BLOB[o.id]||typeof html2canvas==='undefined')return;var el=repEl(REP_LIST.indexOf(o));if(!el)return;
-  TK_BLOB[o.id]=html2canvas(el,{scale:2,backgroundColor:'#ffffff',width:520,windowWidth:640}).then(function(c){return new Promise(function(res){c.toBlob(function(b){res(b);},'image/png');});});}
+  TK_BLOB[o.id]=rcShot(el).then(function(c){return new Promise(function(res){c.toBlob(function(b){res(b);},'image/png');});});}
 function tkBlob(o){if(!TK_BLOB[o.id])tkAfterRender();return TK_BLOB[o.id]||Promise.reject(new Error('No se pudo generar la imagen'));}
 function tkLog(id,tipo){
   var now=new Date().toISOString();var e=TK_ENV[id]||(TK_ENV[id]={ticket:null,rec:0,recLast:null});
